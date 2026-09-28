@@ -106,17 +106,6 @@ public class SurfaceImageLayer extends RenderableLayer
         if (null == raster)
             return null;
 
-        if (raster instanceof GDALDataRaster)
-        {
-            AVList params = new AVListImpl();
-
-            params.setValue(AVKey.WIDTH, raster.getWidth());
-            params.setValue(AVKey.HEIGHT, raster.getHeight());
-            params.setValue(AVKey.SECTOR, raster.getSector());
-
-            raster = raster.getSubRaster(params);
-        }
-
         if (raster instanceof BufferedImageRaster)
         {
             return ((BufferedImageRaster) raster).getBufferedImage();
@@ -173,10 +162,7 @@ public class SurfaceImageLayer extends RenderableLayer
                 {
                     Sector sector = (Sector) o;
 
-                    if (raster instanceof GDALDataRaster)
-                        ((GDALDataRaster) raster).setSector(sector);
-                    else
-                        raster.setValue(AVKey.SECTOR, sector);
+                    raster.setValue(AVKey.SECTOR, sector);
                 }
             }
 

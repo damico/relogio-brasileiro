@@ -53,7 +53,6 @@ public class TiledElevationProducer extends TiledRasterProducer
     protected static DataRasterReader[] readers = new DataRasterReader[]
         {
             new DTEDRasterReader(),
-            new GDALDataRasterReader(),
             new BILRasterReader(),
             new GeotiffRasterReader()
         };

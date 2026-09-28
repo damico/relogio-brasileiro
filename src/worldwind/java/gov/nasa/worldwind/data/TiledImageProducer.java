@@ -50,7 +50,6 @@ public class TiledImageProducer extends TiledRasterProducer
     protected static DataRasterReader[] readers = new DataRasterReader[]
         {
             new RPFRasterReader(),
-            new GDALDataRasterReader(),
             new ImageIORasterReader(),
             new GeotiffRasterReader()
         };

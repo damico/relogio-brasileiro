@@ -10,6 +10,14 @@
   <name>relogio.brasileiro</name>
   <url>http://maven.apache.org</url>
 
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>21</maven.compiler.source>
@@ -36,14 +44,6 @@
       <groupId>org.jogamp.gluegen</groupId>
       <artifactId>gluegen-rt-main</artifactId>
       <version>${jogl.version}</version>
-    </dependency>
-
-    <!-- ligacoes Java do GDAL, so para compilar: o WorldWind funciona sem a
-         biblioteca nativa, apenas sem ler os formatos que dependem dela -->
-    <dependency>
-      <groupId>org.gdal</groupId>
-      <artifactId>gdal</artifactId>
-      <version>3.13.0</version>
     </dependency>
   </dependencies>
 

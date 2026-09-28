@@ -19,9 +19,24 @@ acrescentado depois do mesmo jeito.
 
 ## Alteracoes feitas no fonte original
 
-- `gov/nasa/worldwind/util/gdal/GDALUtils.java`: o metodo
-  `replaceLibraryLoader` instalava um carregador de bibliotecas proprio
-  usando `gdal.setLibraryLoader`, que so existe no `gdal.jar` de 2011
-  distribuido pelo WorldWind. Nenhuma versao publicada das ligacoes Java do
-  GDAL tem essa API, entao o metodo agora so registra o fato e segue. Sem
-  isso o fonte nao compila contra o GDAL do Maven Central.
+O suporte a GDAL foi retirado. Ele servia para ler arquivos de raster do
+disco, coisa que nenhuma tela do projeto faz, e obrigava a carregar as
+ligacoes Java do GDAL so para o codigo compilar.
+
+Sairam os arquivos:
+
+- `gov/nasa/worldwind/data/GDAL.java`
+- `gov/nasa/worldwind/data/GDALMetadata.java`
+- `gov/nasa/worldwind/data/GDALDataRaster.java`
+- `gov/nasa/worldwind/data/GDALDataRasterReader.java`
+- a pasta `gov/nasa/worldwind/util/gdal` inteira
+
+E foram ajustados, tirando as referencias a essas classes:
+
+- `gov/nasa/worldwind/layers/SurfaceImageLayer.java`
+- `gov/nasa/worldwind/data/TiledImageProducer.java`
+- `gov/nasa/worldwind/data/TiledElevationProducer.java`
+- `gov/nasa/worldwind/data/BasicDataRasterReaderFactory.java`
+
+Os cabecalhos de licenca dos arquivos originais continuam citando o GDAL
+entre os componentes de terceiros do WorldWind. Nao foram mexidos.

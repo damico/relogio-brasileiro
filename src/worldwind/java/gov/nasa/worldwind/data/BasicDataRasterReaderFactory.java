@@ -37,7 +37,6 @@ import gov.nasa.worldwind.util.Logging;
  * <pre>
  *  {@link gov.nasa.worldwind.data.RPFRasterReader}
  *  {@link gov.nasa.worldwind.data.DTEDRasterReader}
- *  {@link gov.nasa.worldwind.data.GDALDataRasterReader}
  *  {@link gov.nasa.worldwind.data.GeotiffRasterReader}
  *  {@link gov.nasa.worldwind.data.BILRasterReader}
  *  {@link gov.nasa.worldwind.data.ImageIORasterReader}
@@ -60,7 +59,6 @@ public class BasicDataRasterReaderFactory implements DataRasterReaderFactory
             // NOTE: Update the javadoc above if this list changes.
             new RPFRasterReader(),
             new DTEDRasterReader(),
-            new GDALDataRasterReader(),
             new GeotiffRasterReader(),
             new BILRasterReader(),
             new ImageIORasterReader(),
