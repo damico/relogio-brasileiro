@@ -1,0 +1,4 @@
+target/
+
+# as coordenadas de casa nao vao para o repositorio
+data/config.json
