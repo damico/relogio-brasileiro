@@ -6,16 +6,102 @@ Hoje ele calcula onde o Sol está batendo no planeta neste segundo, em que fase 
 
 Java e Swing, sem biblioteca de gráficos além do que vem no JDK. A única exceção é o NASA WorldWind, que desenha o globo, e ele está aqui dentro, em código fonte, compilado junto.
 
-## Rodando
+## Compilando e rodando
 
-Precisa de **JDK 21** e Maven.
+Em qualquer sistema você precisa de três coisas: **JDK 21 ou mais novo**, **Maven** e **Git**. A tela do globo (`F4`) pede ainda drivers de OpenGL funcionando, que é o padrão em qualquer máquina com ambiente gráfico, e acesso à internet, porque as imagens do planeta são baixadas dos servidores da NASA e guardadas em cache.
+
+### 1. Instale as ferramentas
+
+**Linux**, Debian ou Ubuntu:
 
 ```bash
+sudo apt update
+sudo apt install openjdk-21-jdk maven git
+```
+
+No Fedora, `sudo dnf install java-21-openjdk-devel maven git`. No Arch, `sudo pacman -S jdk21-openjdk maven git`.
+
+**macOS**, com [Homebrew](https://brew.sh):
+
+```bash
+brew install openjdk@21 maven git
+sudo ln -sfn /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-21.jdk
+```
+
+Esse segundo comando é o que faz o sistema enxergar o JDK do Homebrew. Em Mac com processador Intel, troque `/opt/homebrew` por `/usr/local`.
+
+**Windows**, no PowerShell:
+
+```powershell
+winget install EclipseAdoptium.Temurin.21.JDK
+winget install Apache.Maven
+winget install Git.Git
+```
+
+Feche e abra o terminal depois de instalar, senão o `PATH` novo não vale ainda.
+
+### 2. Confira que ficou tudo no lugar
+
+```bash
+java -version
+mvn -v
+```
+
+O `java -version` tem que mostrar 21 ou mais. O `mvn -v` mostra, na última linha, qual JDK o Maven está usando: se for um mais velho, aponte a variável `JAVA_HOME` para o JDK 21.
+
+### 3. Clone e compile
+
+**Linux e macOS:**
+
+```bash
+git clone https://github.com/damico/relogio-brasileiro
+cd relogio-brasileiro
+cp data/config.exemplo.json data/config.json
 mvn package
+```
+
+**Windows:**
+
+```powershell
+git clone https://github.com/damico/relogio-brasileiro
+cd relogio-brasileiro
+copy data\config.exemplo.json data\config.json
+mvn package
+```
+
+Abra o `data/config.json` e troque as coordenadas pelas da sua casa, longitude primeiro e latitude depois. Sem esse arquivo o programa abre do mesmo jeito, mas as telas `F4` e `F5` avisam que não sabem onde você está.
+
+A primeira compilação demora mais, porque o Maven baixa as dependências. Depois disso, uma compilação limpa leva cerca de **45 segundos**, já que são 1300 arquivos do WorldWind mais os do projeto.
+
+### 4. Rode
+
+**Linux e macOS:**
+
+```bash
 java -jar target/relogio.brasileiro-0.0.1-SNAPSHOT.jar
 ```
 
-O `mvn package` põe as dependências em `target/lib` e escreve o caminho delas no manifesto, então o `java -jar` basta. Durante o desenvolvimento, `mvn compile` e `java -cp target/classes com.scicrop.relogio.brasileiro.App` também servem, só o globo não abre assim, porque ele precisa das bibliotecas de OpenGL.
+**Windows:**
+
+```powershell
+java -jar target\relogio.brasileiro-0.0.1-SNAPSHOT.jar
+```
+
+O `mvn package` põe as dependências em `target/lib` e escreve o caminho delas no manifesto do jar, então esse comando basta, sem classpath na mão.
+
+Durante o desenvolvimento, `mvn compile` seguido de `java -cp target/classes com.scicrop.relogio.brasileiro.App` também serve e é mais rápido. A única diferença é que o globo não abre assim, porque as bibliotecas de OpenGL não entram nesse classpath. As outras telas funcionam normalmente e o `F4` explica o que falta.
+
+### Se alguma coisa der errado
+
+| Sintoma | O que é |
+|---|---|
+| `release version 21 not supported` | o Maven está usando um JDK mais velho, ajuste o `JAVA_HOME` |
+| `mvn` não é reconhecido | o Maven não entrou no `PATH`, reabra o terminal |
+| `F4` mostra um aviso em vez do globo | você rodou com `-cp target/classes` em vez do `java -jar` |
+| o globo abre azul, sem continentes | sem internet, ou o cache ainda está enchendo, espere um pouco |
+| erro de acesso a módulo no macOS | acrescente `--add-exports java.desktop/sun.lwawt.macosx=ALL-UNNAMED` antes do `-jar` |
+
+Uma ressalva honesta: o projeto foi desenvolvido e testado no **Linux**, com Java 21, Mesa e X11. Os passos de macOS e Windows são o procedimento padrão para essas ferramentas, mas não passaram por teste nessas máquinas. Se algo não funcionar por lá, abra uma issue contando o que aconteceu.
 
 ## As telas
 
