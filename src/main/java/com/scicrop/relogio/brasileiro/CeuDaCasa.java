@@ -3,6 +3,9 @@ package com.scicrop.relogio.brasileiro;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -40,12 +43,93 @@ public class CeuDaCasa extends Cena
 	/** Abaixo disso o Sol ja nao clareia mais o ceu. */
 	private static final double FIM_DO_CREPUSCULO = -18;
 
+	private static final Color COR_CONSTELACAO = new Color(95, 125, 185);
+
+	/** Margens que o disco respeita, para o cabecalho e as linhas de baixo. */
+	private static final int MARGEM_DE_CIMA = 56;
+	private static final int MARGEM_DE_BAIXO = 76;
+
 	private final Configuracao casa = Configuracao.ler();
 	private final CatalogoDeEstrelas estrelas = CatalogoDeEstrelas.carregar();
+	private final LinhasDasConstelacoes constelacoes = LinhasDasConstelacoes.carregar();
+
+	private double zoom = 1;
+	private int deslocamentoX;
+	private int deslocamentoY;
+	private Point arrasto;
 
 	public CeuDaCasa() {
 		// o ceu anda so no tempo real: nada de acelerar as estrelas
 		super("CeuDaCasa", false);
+
+		atalho("typed +", () -> aproximar(1.25, getWidth() / 2, centroY()));
+		atalho("typed -", () -> aproximar(1 / 1.25, getWidth() / 2, centroY()));
+		atalho("0", () -> {
+			zoom = 1;
+			deslocamentoX = 0;
+			deslocamentoY = 0;
+		});
+
+		addMouseWheelListener(e -> {
+			aproximar(Math.pow(1.2, -e.getWheelRotation()), e.getX(), e.getY());
+			repaint();
+		});
+
+		MouseAdapter mao = new MouseAdapter() {
+			public void mousePressed(MouseEvent e) {
+				arrasto = e.getPoint();
+			}
+
+			public void mouseDragged(MouseEvent e) {
+				if (arrasto != null) {
+					deslocamentoX += e.getX() - arrasto.x;
+					deslocamentoY += e.getY() - arrasto.y;
+					arrasto = e.getPoint();
+					repaint();
+				}
+			}
+
+			public void mouseReleased(MouseEvent e) {
+				arrasto = null;
+			}
+		};
+		addMouseListener(mao);
+		addMouseMotionListener(mao);
+	}
+
+	protected String dicasExtras() {
+		return String.format(PT_BR, "roda do mouse aproxima (%.1fx), arrastar move, 0 volta ao normal", zoom);
+	}
+
+	/**
+	 * Aproxima ou afasta mantendo parado o ponto do ceu que esta sob o cursor.
+	 */
+	private void aproximar(double fator, int ancoraX, int ancoraY) {
+		double anterior = zoom;
+		zoom = Math.max(1, Math.min(20, zoom * fator));
+
+		double mudanca = zoom / anterior;
+		int baseX = getWidth() / 2;
+		int baseY = centroDaBase();
+		deslocamentoX = (int) ((ancoraX - baseX) - mudanca * (ancoraX - baseX - deslocamentoX));
+		deslocamentoY = (int) ((ancoraY - baseY) - mudanca * (ancoraY - baseY - deslocamentoY));
+	}
+
+	private int centroDaBase() {
+		return (MARGEM_DE_CIMA + getHeight() - MARGEM_DE_BAIXO) / 2;
+	}
+
+	private int centroX() {
+		return getWidth() / 2 + deslocamentoX;
+	}
+
+	private int centroY() {
+		return centroDaBase() + deslocamentoY;
+	}
+
+	private int raio() {
+		int base = Math.min((getHeight() - MARGEM_DE_CIMA - MARGEM_DE_BAIXO) / 2 - 18, getWidth() / 2 - 60);
+		return (int) (base * zoom);
 	}
 
 	protected void desenhar(Graphics2D g2, Instant instante) {
@@ -55,12 +139,9 @@ public class CeuDaCasa extends Cena
 			return;
 		}
 
-		// o disco ocupa o que sobra entre o cabecalho e as linhas de baixo
-		int margemDeCima = 56;
-		int margemDeBaixo = 76;
-		int centroX = getWidth() / 2;
-		int centroY = (margemDeCima + getHeight() - margemDeBaixo) / 2;
-		int raio = Math.min((getHeight() - margemDeCima - margemDeBaixo) / 2 - 18, getWidth() / 2 - 60);
+		int centroX = centroX();
+		int centroY = centroY();
+		int raio = raio();
 
 		double dias = Duration.between(J2000, instante).toMillis() / 86_400_000d;
 		double tempoSideral = Horizonte.tempoSideralLocal(dias, casa.getLongitude());
@@ -71,6 +152,7 @@ public class CeuDaCasa extends Cena
 
 		desenharCeu(g2, centroX, centroY, raio, claridade);
 		desenharGrade(g2, centroX, centroY, raio);
+		desenharConstelacoes(g2, centroX, centroY, raio, tempoSideral, claridade);
 		int visiveis = desenharEstrelas(g2, centroX, centroY, raio, tempoSideral, claridade);
 		desenharLua(g2, centroX, centroY, raio, instante, dias, tempoSideral);
 		desenharSol(g2, centroX, centroY, raio, sol);
@@ -111,6 +193,46 @@ public class CeuDaCasa extends Cena
 		g2.setColor(COR_HORIZONTE);
 		g2.setStroke(new BasicStroke(2));
 		g2.drawOval(centroX - raio, centroY - raio, raio * 2, raio * 2);
+	}
+
+	/**
+	 * As figuras das constelacoes. Um traco so aparece quando as duas pontas
+	 * dele estao acima do horizonte: perto da borda a projecao estica sem
+	 * limite, e uma ponta abaixo do horizonte jogaria a linha para fora do
+	 * mundo.
+	 */
+	private void desenharConstelacoes(Graphics2D g2, int centroX, int centroY, int raio,
+			double tempoSideral, double claridade) {
+		double transparencia = (1 - claridade) * 0.75;
+		if (transparencia < 0.02) {
+			return;
+		}
+
+		g2.setColor(transparente(COR_CONSTELACAO, transparencia));
+		g2.setStroke(new BasicStroke(1));
+
+		for (int i = 0; i < constelacoes.quantidade(); i++) {
+			double[][] traco = constelacoes.getTraco(i);
+
+			for (int ponto = 1; ponto < traco.length; ponto++) {
+				double[] antes = traco[ponto - 1];
+				double[] agora = traco[ponto];
+
+				double alturaAntes = Horizonte.altura(antes[0], antes[1], casa.getLatitude(), tempoSideral);
+				double alturaAgora = Horizonte.altura(agora[0], agora[1], casa.getLatitude(), tempoSideral);
+				if (alturaAntes <= 0 || alturaAgora <= 0) {
+					continue;
+				}
+
+				double azimuteAntes = Horizonte.azimute(antes[0], antes[1], casa.getLatitude(), tempoSideral);
+				double azimuteAgora = Horizonte.azimute(agora[0], agora[1], casa.getLatitude(), tempoSideral);
+
+				g2.drawLine(telaX(centroX, raio, alturaAntes, azimuteAntes),
+						telaY(centroY, raio, alturaAntes, azimuteAntes),
+						telaX(centroX, raio, alturaAgora, azimuteAgora),
+						telaY(centroY, raio, alturaAgora, azimuteAgora));
+			}
+		}
 	}
 
 	private int desenharEstrelas(Graphics2D g2, int centroX, int centroY, int raio,

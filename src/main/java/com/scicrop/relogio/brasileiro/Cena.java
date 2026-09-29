@@ -90,12 +90,24 @@ public abstract class Cena extends JPanel
 		setBackground(FUNDO);
 
 		if (aceleravel) {
-			atalho("RIGHT", () -> velocidade = velocidade.maisRapido());
-			atalho("UP", () -> velocidade = velocidade.maisRapido());
-			atalho("LEFT", () -> velocidade = velocidade.maisDevagar());
-			atalho("DOWN", () -> velocidade = velocidade.maisDevagar());
-			atalho("T", () -> velocidade = Velocidade.TEMPO_REAL);
+			atalho("RIGHT", () -> mudarRitmo(velocidade.maisRapido()));
+			atalho("UP", () -> mudarRitmo(velocidade.maisRapido()));
+			atalho("LEFT", () -> mudarRitmo(velocidade.maisDevagar()));
+			atalho("DOWN", () -> mudarRitmo(velocidade.maisDevagar()));
+			atalho("T", () -> mudarRitmo(Velocidade.TEMPO_REAL));
 			atalho("A", () -> simulado = Instant.now());
+		}
+	}
+
+	/**
+	 * Troca o ritmo do tempo. Voltar para o tempo real traz a data de volta
+	 * para agora: seria estranho o relogio andar no ritmo certo, mas marcando
+	 * um dia qualquer para onde a aceleracao tinha levado.
+	 */
+	private void mudarRitmo(Velocidade nova) {
+		velocidade = nova;
+		if (velocidade == Velocidade.TEMPO_REAL) {
+			simulado = Instant.now();
 		}
 	}
 
@@ -107,7 +119,12 @@ public abstract class Cena extends JPanel
 	/** O que cada tela desenha, no instante do ceu que estiver correndo. */
 	protected abstract void desenhar(Graphics2D g2, Instant instante);
 
-	private void atalho(String tecla, Runnable acao) {
+	/** Teclas proprias da cena, para entrar no rodape. Nulo quando nao ha. */
+	protected String dicasExtras() {
+		return null;
+	}
+
+	protected void atalho(String tecla, Runnable acao) {
 		Object nome = "tecla " + tecla;
 		getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(tecla), nome);
 		getActionMap().put(nome, new AbstractAction() {
@@ -159,11 +176,16 @@ public abstract class Cena extends JPanel
 
 		desenhar(g2, instante);
 
-		g2.setColor(COR_APAGADA);
-		g2.drawString(aceleravel
+		String rodape = aceleravel
 				? "Setas mudam o ritmo do tempo (agora em " + velocidade.nome
-						+ ") - T volta para tempo real - A volta para agora - F2 a F5 trocam de tela - F11 tela cheia"
-				: "Tempo real - F2 a F5 trocam de tela - F11 tela cheia", 14, getHeight() - 14);
+						+ ") - T volta para tempo real e para agora - A volta para agora"
+				: "Tempo real";
+		if (dicasExtras() != null) {
+			rodape += " - " + dicasExtras();
+		}
+
+		g2.setColor(COR_APAGADA);
+		g2.drawString(rodape + " - F2 a F5 trocam de tela - F11 tela cheia", 14, getHeight() - 14);
 	}
 
 	protected double diasDesdeJ2000(Instant instante) {
