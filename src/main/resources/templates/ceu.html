@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragmentos :: cabecalho('Céu da casa - relogio.brasileiro')}"></head>
+<body class="ceu">
+<canvas id="tela"></canvas>
+<div id="rotulos"></div>
+<div id="rotulos3d"></div>
+<div id="rotulosObs"></div>
+<div id="modos">
+  <button type="button" data-modo="2d" class="ativo">Disco 2D</button>
+  <button type="button" data-modo="esfera">Esfera 3D</button>
+  <button type="button" data-modo="obs">Observador</button>
+</div>
+<div id="painelObs" hidden></div>
+<div id="hud" hidden></div>
+<div id="painel3d" hidden>
+  <label>Astro de referência
+    <select id="astroRef"><option value="sol">Sol</option><option value="lua">Lua</option></select>
+  </label>
+  <div id="camadas"></div>
+</div>
+<div id="cabecalho"><div>CeuDaCasa</div><div id="data"></div></div>
+<div id="situacao"><div id="linha1"></div><div id="linha2"></div><div id="linha3"></div><div id="linhasSat"></div></div>
+<div id="rodape"></div>
+<script type="module" th:src="@{/js/ceu.js}"></script>
+</body>
+</html>

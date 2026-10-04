@@ -1,0 +1,56 @@
+html, body { margin: 0; height: 100%; background: #fff; overflow: hidden;
+  font-family: sans-serif; }
+canvas#tela { display: block; width: 100vw; height: 100vh; }
+
+body.globo { background: #000; }
+#marcas { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.marca { position: absolute; transform: translate(-50%, -50%); color: #fff; font-size: 12px;
+  white-space: nowrap; text-shadow: 0 0 3px #000, 0 0 3px #000; }
+.marca::before { content: ""; display: block; width: var(--d, 12px); height: var(--d, 12px);
+  margin: 0 auto 2px; border-radius: 50%; background: var(--cor); border: 1px solid #000; }
+#modo { position: fixed; top: 10px; right: 12px; padding: 6px 12px; cursor: pointer;
+  background: #111; color: #fff; border: 1px solid #555; border-radius: 4px; }
+#informacoes { position: fixed; left: 0; right: 0; bottom: 0; padding: 8px 12px;
+  background: #000; color: #fff; font-size: 14px; line-height: 1.5; }
+
+body.ceu { background: #12121a; color: #ebebf0; font-size: 13px; }
+#rotulos { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.rotulo { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; }
+.rotulo.esq { transform: translate(0, -50%); }
+#cabecalho { position: fixed; top: 6px; left: 0; right: 0; text-align: center; line-height: 20px; pointer-events: none; }
+#situacao, #rodape { position: fixed; left: 14px; line-height: 20px; pointer-events: none; }
+#situacao { bottom: 44px; }
+#linha2, #linha3, #rodape { color: #9696a5; }
+#rodape { bottom: 8px; }
+body.ceu canvas#tela { cursor: grab; touch-action: none; }
+
+#rotulos3d { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.r3d { font-size: 12px; text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 6px #000; }
+body.ceu #modo { z-index: 2; }
+#painel3d { position: fixed; top: 48px; right: 12px; padding: 8px 10px; background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #555; border-radius: 4px; color: #ebebf0; font-size: 12px; line-height: 1.7; }
+#painel3d[hidden] { display: none; }
+#painel3d label { display: block; cursor: pointer; }
+#painel3d select { margin-left: 4px; background: #111; color: #fff; border: 1px solid #555; }
+#camadas { margin-top: 4px; }
+
+#rotulosObs { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+#modos { position: fixed; top: 10px; right: 12px; z-index: 2; display: flex; gap: 4px; }
+#modos button, #painelObs button { padding: 6px 12px; cursor: pointer; background: #111; color: #fff;
+  border: 1px solid #555; border-radius: 4px; }
+#modos button.ativo { background: #2a4a8a; border-color: #6aa0ff; }
+#painelObs { position: fixed; top: 48px; right: 12px; width: 250px; padding: 8px 10px; background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #555; border-radius: 4px; color: #ebebf0; font-size: 12px; line-height: 1.7; }
+#painelObs[hidden] { display: none; }
+#painelObs label { display: block; cursor: pointer; }
+#painelObs button { padding: 2px 8px; font-size: 12px; }
+#hud { position: fixed; top: 10px; left: 12px; padding: 4px 10px; background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px; color: #fff; font-size: 13px; pointer-events: none; }
+#hud[hidden] { display: none; }
+
+#botoes { position: fixed; top: 10px; right: 12px; z-index: 2; display: flex; gap: 6px; }
+#botoes button { padding: 6px 12px; cursor: pointer; background: #111; color: #fff; border: 1px solid #555; border-radius: 4px; }
+#botoes #modo { position: static; }
+#infoSat { color: #cfd6e6; font-size: 13px; }
+#linhasSat { color: #cfd6e6; font-size: 12px; }
+#situacao { max-width: 96vw; }

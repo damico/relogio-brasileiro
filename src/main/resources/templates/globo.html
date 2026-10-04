@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragmentos :: cabecalho('Globo - relogio.brasileiro')}"></head>
+<body class="globo">
+<canvas id="tela"></canvas>
+<div id="marcas"></div>
+<div id="botoes">
+  <button id="botaoSat" type="button">Satélites: sim</button>
+  <button id="modo" type="button">Globo 3D</button>
+</div>
+<div id="informacoes"><div id="infoCasa"></div><div id="infoSat"></div></div>
+<script type="module" th:src="@{/js/globo.js}"></script>
+</body>
+</html>

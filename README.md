@@ -87,6 +87,40 @@ java -jar target/relogio.brasileiro-0.0.1-SNAPSHOT.jar
 java -jar target\relogio.brasileiro-0.0.1-SNAPSHOT.jar
 ```
 
+**Modo web.** O mesmo jar sobe só o servidor, sem janela, com `--web` (porta 8080, ou `--server.port=N`):
+
+```bash
+java -jar target/relogio.brasileiro-0.0.1-SNAPSHOT.jar --web
+curl localhost:8080/api/sol
+curl "localhost:8080/api/lua?t=2026-06-21T12:00:00Z"
+```
+
+No navegador, `http://localhost:8080/` mostra os relógios e a órbita, e `F4` (ou `/globo`) mostra o dia e a noite no mapa, com botão para trocar entre mapa plano e globo 3D. O desenho é feito com three.js, servido localmente pelo próprio jar.
+
+`F5` (ou `/ceu`) mostra o céu visto de casa, com as 5.042 estrelas do catálogo Hipparcos e as figuras das constelações. A roda do mouse aproxima, arrastar move, `0` volta ao normal. Para ver outro instante, parado, use `/ceu?t=2026-06-21T15:00:00Z`.
+
+O botão **Esfera 3D** (canto superior direito) troca o disco pela esfera celeste vista de fora, com quem olha no centro. Arrastar gira a esfera e a roda do mouse aproxima. O painel liga e desliga cada conceito: meridiano, equador celeste, polo e calotas circumpolares, movimento diurno, altura e azimute, ângulo horário e as estrelas (com a opção de ver só as acima do horizonte). O astro de referência pode ser o Sol ou a Lua.
+
+### Planetas e satélites
+
+Os sete planetas (Mercúrio a Netuno) aparecem nas telas do céu e na esfera, com posição calculada pelos elementos orbitais da JPL e brilho aparente. O alcance da vista decide quais um olho nu enxerga.
+
+Os satélites vêm da pasta `data/tle`: cada arquivo `.tle` ou `.txt` pode ter um ou vários satélites, em três linhas (nome e as duas linhas do TLE). A pasta é relida a cada poucos segundos, então trocar um TLE ou acrescentar outro satélite vale sem reiniciar. Vêm com o projeto o Sentinel-2A, o 2B e o 2C. Os três voam no mesmo plano e no mesmo sentido (órbita retrógrada heliossíncrona); o par 2B e 2C está hoje a 180° um do outro, e o 2A a cerca de 37° do 2B.
+
+Cada satélite aparece em todas as visões: no `/globo` (mapa plano e globo 3D) com a trilha da órbita, o trecho já percorrido mais apagado, a altitude e as duas velocidades (a da órbita e a relativa ao solo); e no disco, na esfera e no observador, com o arco da passagem sobre a sua casa, a elevação, o azimute e a próxima passagem. Na sombra da Terra o ponto fica apagado, porque o satélite deixa de refletir luz.
+
+O TLE envelhece: em órbita baixa o erro cresce na ordem de 1 km por dia, e depois de uma ou duas semanas a posição já não é confiável (a tela avisa quando o TLE passa de 14 dias). Para atualizar:
+
+```bash
+curl -s "https://celestrak.org/NORAD/elements/gp.php?CATNR=40697&FORMAT=TLE" -o data/tle/sentinel-2a.tle
+curl -s "https://celestrak.org/NORAD/elements/gp.php?CATNR=42063&FORMAT=TLE" -o data/tle/sentinel-2b.tle
+curl -s "https://celestrak.org/NORAD/elements/gp.php?CATNR=60989&FORMAT=TLE" -o data/tle/sentinel-2c.tle
+```
+
+O propagador é o SGP4 para órbitas de período menor que 225 minutos (toda a órbita baixa). Satélites geoestacionários ou de órbita muito alta precisam do SGP4 de espaço profundo, que ainda não está implementado, e viram um aviso na tela.
+
+O botão **Observador** mostra o céu em primeira pessoa: você em pé no centro da abóboda, com o céu por dentro e o chão sob os pés, o horizonte graduado e os pontos cardeais. Arrastar (ou as setas) vira a cabeça, a roda do mouse muda o campo de visão e `0` volta à vista inicial. O painel tem atalhos para olhar para norte, leste, sul, oeste, zênite, Sol, Lua e polo celeste, além de um controle do alcance da vista. `/ceu?modo=obs` e `/ceu?modo=esfera` abrem direto no modo.
+
 O `mvn package` põe as dependências em `target/lib` e escreve o caminho delas no manifesto do jar, então esse comando basta, sem classpath na mão.
 
 Durante o desenvolvimento, `mvn compile` seguido de `java -cp target/classes com.scicrop.relogio.brasileiro.App` também serve e é mais rápido. A única diferença é que o globo não abre assim, porque as bibliotecas de OpenGL não entram nesse classpath. As outras telas funcionam normalmente e o `F4` explica o que falta.

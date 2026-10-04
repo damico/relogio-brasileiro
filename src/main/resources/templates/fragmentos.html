@@ -1,0 +1,14 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="cabecalho(titulo)">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title th:text="${titulo}">relogio.brasileiro</title>
+<link rel="stylesheet" th:href="@{/css/tela.css}">
+<script type="importmap" th:inline="none">
+  { "imports": { "three": "/vendor/three.module.min.js" } }
+</script>
+<script type="module" th:src="@{/js/navegacao.js}"></script>
+</head>
+<body></body>
+</html>
