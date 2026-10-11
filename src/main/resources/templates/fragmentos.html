@@ -5,10 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title th:text="${titulo}">relogio.brasileiro</title>
 <link rel="stylesheet" th:href="@{/css/tela.css}">
+<link rel="stylesheet" th:href="@{/css/layout.css}">
 <script type="importmap" th:inline="none">
   { "imports": { "three": "/vendor/three.module.min.js" } }
 </script>
 <script type="module" th:src="@{/js/navegacao.js}"></script>
+<script type="module" th:src="@{/js/layout.js}"></script>
 </head>
-<body></body>
+<body>
+
+<!--
+  O padrao de todas as telas: o conteudo ocupa a largura inteira e, por cima
+  dele, duas colunas translucidas de um quinto da largura. A da esquerda,
+  igual em todas as telas, e o tempo e o espaco; a da direita, que cada tela
+  preenche, e a configuracao.
+-->
+<aside th:fragment="colunaEsquerda" id="colunaEsquerda" class="coluna esquerda" data-coluna="esquerda">
+  <button class="alternar" type="button" title="Recolher ou expandir (tecla [)" aria-label="Recolher ou expandir a coluna de tempo e espaço"></button>
+  <header class="cabeca"><h2>Tempo e espaço</h2><span id="estadoTempo" class="estado"></span></header>
+  <div class="corpo">
+    <details class="secao" open><summary>Agora</summary><div id="secAgora"></div></details>
+    <!-- dados proprios da tela, que ela preenche quando tem: tambem sao tempo e espaco -->
+    <details class="secao" open id="blocoExtra" hidden><summary id="tituloExtra">Nesta tela</summary><div id="secExtra"></div></details>
+    <details class="secao" open><summary>Estação do ano</summary><div id="secEstacao"></div></details>
+    <details class="secao" open><summary>Lua</summary><div id="secLua"></div></details>
+    <details class="secao" open><summary>Sol e Terra</summary><div id="secSolTerra"></div></details>
+    <details class="secao" open><summary>Planetas</summary><div id="secPlanetas"></div></details>
+    <details class="secao" open id="blocoSatelites"><summary>Satélites e órbitas</summary><div id="secSatelites"></div></details>
+  </div>
+</aside>
+
+<th:block th:fragment="cabecaDireita(tela)">
+  <button class="alternar" type="button" title="Recolher ou expandir (tecla ])" aria-label="Recolher ou expandir a coluna de configurações"></button>
+  <header class="cabeca"><h2>Configurações</h2></header>
+  <nav class="telas" aria-label="Telas">
+    <a th:href="@{/}" th:classappend="${tela == 'relogios'} ? 'atual'">Relógios e órbita <kbd>F1</kbd></a>
+    <a th:href="@{/orbitas}" th:classappend="${tela == 'orbitas'} ? 'atual'">Órbitas gerais <kbd>F2</kbd></a>
+    <a th:href="@{/estacoes}" th:classappend="${tela == 'estacoes'} ? 'atual'">Estações <kbd>F3</kbd></a>
+    <a th:href="@{/globo}" th:classappend="${tela == 'globo'} ? 'atual'">Globo <kbd>F4</kbd></a>
+    <a th:href="@{/ceu}" th:classappend="${tela == 'ceu'} ? 'atual'">Céu da casa <kbd>F5</kbd></a>
+    <button type="button" id="botaoTelaCheia">Tela cheia <kbd>F11</kbd></button>
+  </nav>
+</th:block>
+
+</body>
 </html>

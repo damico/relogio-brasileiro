@@ -249,6 +249,8 @@ export class EsferaCeleste {
       c.type = 'checkbox';
       c.checked = true;
       c.addEventListener('change', () => { this.camadas[chave] = c.checked; this.aplicarCamadas(); });
+      l.dataset.chave = chave;
+      l.hidden = chave === 'planetas' || chave === 'satelites'; // estes dois ficam na coluna de filtros, que vale para as tres visoes
       l.append(c, ' ' + nome);
       caixas.appendChild(l);
     }
@@ -301,6 +303,14 @@ export class EsferaCeleste {
       if (c.magnitude[i] <= this.limiteMagnitude - extincao) alcancaveis++;
     }
     this.contagem.textContent = `${acima} acima do horizonte, ${alcancaveis} ao alcance da vista (de ${c.ra.length})`;
+  }
+
+  /** Liga ou desliga uma camada de fora do painel, mantendo a caixa dele em dia. */
+  definirCamada(chave, ligada) {
+    this.camadas[chave] = ligada;
+    const caixa = document.querySelector(`#camadas label[data-chave="${chave}"] input`);
+    if (caixa) caixa.checked = ligada;
+    this.aplicarCamadas();
   }
 
   aplicarCamadas() {
@@ -539,8 +549,10 @@ export class EsferaCeleste {
       for (const sat of sats.lista) {
         const cor = new THREE.Color(sat.cor).getHex();
         const pontos = sat.amostras.filter(a => a[7] != null).map(a => dir(rad(a[7]), rad(a[6])));
+        let linhas = null;
         if (pontos.length > 1) {
-          this.grupos.satelites.add(linhaPartida(pontos, cor, { tracejada: false, opacidade: 0.9, abaixo: 0.35 }));
+          linhas = linhaPartida(pontos, cor, { tracejada: false, opacidade: 0.9, abaixo: 0.35 });
+          this.grupos.satelites.add(linhas);
         }
         const marca = bola(new THREE.Vector3(), 0.022, cor);
         this.grupos.satelites.add(marca);
@@ -549,12 +561,14 @@ export class EsferaCeleste {
         el.style.color = sat.cor;
         el.style.fontWeight = 'bold';
         this.contenedor.appendChild(el);
-        this.marcasSat.push({ sat, marca, el, posicao: new THREE.Vector3(), ok: false });
+        this.marcasSat.push({ sat, marca, el, linhas, posicao: new THREE.Vector3(), ok: false });
       }
     }
 
     for (const m of this.marcasSat) {
-      const p = sats.posicao(m.sat);
+      const ligado = sats.visivel(m.sat);
+      if (m.linhas) m.linhas.visible = ligado;
+      const p = ligado ? sats.posicao(m.sat) : null;
       m.ok = !!p && p.elevacao != null;
       m.marca.visible = m.ok;
       if (!m.ok) continue;

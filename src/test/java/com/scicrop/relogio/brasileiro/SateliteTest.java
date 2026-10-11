@@ -123,4 +123,42 @@ class SateliteTest
 	private static double[] cruz(double[] a, double[] b) {
 		return new double[] { a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0] };
 	}
+
+	/**
+	 * A faixa de 290 km cobre um ponto quando ele esta a menos de 145 km da
+	 * trilha. Um ponto bem embaixo da trilha, no futuro, tem de ser achado; um a
+	 * 100 km, ainda dentro; e um a 200 km, fora, nao pode contar essa passagem.
+	 */
+	@Test
+	void coberturaDaFaixaDeUmPontoDoChao() throws Exception {
+		Satelite s = sentinel("sentinel-2a.tle");
+		Instant t0 = s.getTle().epoca().plus(Duration.ofDays(3));
+		Estado sob = s.em(t0, Double.NaN, Double.NaN);
+		double graus = 1 / (111.19 * Math.cos(Math.toRadians(sob.latitude())));
+
+		// bem embaixo
+		List<Satelite.Cobertura> a = s.proximasCoberturas(t0.minusSeconds(600), sob.latitude(), sob.longitude(), 145, 1, 1);
+		assertEquals(1, a.size());
+		assertTrue(a.get(0).distanciaKm() < 1.5, "distancia " + a.get(0).distanciaKm());
+		assertTrue(Math.abs(Duration.between(t0, a.get(0).instante()).getSeconds()) < 3);
+
+		// 100 km para leste: dentro da faixa (a trilha e quase norte-sul)
+		List<Satelite.Cobertura> b = s.proximasCoberturas(t0.minusSeconds(600), sob.latitude(), sob.longitude() + 100 * graus, 145, 1, 1);
+		assertEquals(1, b.size());
+		assertEquals(100, b.get(0).distanciaKm(), 12);
+		assertTrue(Math.abs(Duration.between(t0, b.get(0).instante()).getSeconds()) < 60);
+
+		// 200 km para leste: fora da faixa nesta passagem
+		List<Satelite.Cobertura> c = s.proximasCoberturas(t0.minusSeconds(600), sob.latitude(), sob.longitude() + 200 * graus, 145, 1, 1);
+		assertTrue(c.isEmpty() || Math.abs(Duration.between(t0, c.get(0).instante()).getSeconds()) > 600,
+				"nao devia cobrir esta passagem: " + c);
+	}
+
+	@Test
+	void distanciaNoChaoPelaCirculoMaximo() {
+		// 1 grau de meridiano vale cerca de 111,2 km; a meia volta da Terra, cerca de 20.015 km
+		assertEquals(111.19, Satelite.distanciaNoChaoKm(0, 0, 1, 0), 0.1);
+		assertEquals(20015, Satelite.distanciaNoChaoKm(0, 0, 0, 180), 5);
+		assertEquals(0, Satelite.distanciaNoChaoKm(-23.5, -46.6, -23.5, -46.6), 1e-9);
+	}
 }

@@ -13,6 +13,10 @@ export function direcaoNoCeu(elevacao, azimute, raio = 1) {
   return [raio * Math.cos(e) * Math.sin(a), raio * Math.sin(e), -raio * Math.cos(e) * Math.cos(a)];
 }
 
+function lerOcultos() {
+  try { return JSON.parse(localStorage.getItem('satelitesOcultos') || '[]'); } catch (e) { return []; }
+}
+
 export class Satelites {
   /** @param instanteFixo texto ISO de um instante parado, ou nulo para o tempo real */
   constructor(instanteFixo = null) {
@@ -22,6 +26,17 @@ export class Satelites {
     this.observador = null;
     this.versao = 0;     // sobe a cada trajetoria nova, para quem desenha refazer os tracos
     this.recebidoEm = 0;
+    this.ocultos = new Set(lerOcultos()); // numeros NORAD que o usuario desligou
+  }
+
+  /** Se o satelite deve ser desenhado: o usuario pode desligar cada um, em qualquer tela. */
+  visivel(sat) {
+    return !this.ocultos.has(sat.numero);
+  }
+
+  definirVisivel(sat, visivel) {
+    if (visivel) this.ocultos.delete(sat.numero); else this.ocultos.add(sat.numero);
+    try { localStorage.setItem('satelitesOcultos', JSON.stringify([...this.ocultos])); } catch (e) { /* sem armazenamento: so nao lembra */ }
   }
 
   /** O instante que as telas estao mostrando, em ms. */
@@ -108,6 +123,41 @@ export function descreverSatelite(sat, p, { comCeu = true } = {}) {
       ? ` - passando agora até ${hhmm(descida)} (máx. ${fmt(g.elevacaoMaxima)}°)`
       : ` - próxima passagem ${hhmm(subida)}-${hhmm(descida)}, máx. ${fmt(g.elevacaoMaxima)}°${g.visivel ? ', visível' : ''}`;
   }
+  if (comCeu && sat.larguraDaFaixaKm) {
+    t += ` - faixa de ${fmt(sat.larguraDaFaixaKm)} km`;
+    // a passagem que interessa para imagear e a de dia; as da madrugada ficam de reserva
+    const lista = sat.proximasCoberturas || [];
+    const c = lista.find(x => x.alturaDoSol > 0) || lista[0];
+    if (c) {
+      const d = new Date(c.instante);
+      t += ` cobre a casa em ${dois(d.getDate())}/${dois(d.getMonth() + 1)} ${dois(d.getHours())}:${dois(d.getMinutes())}`
+        + ` (a ${fmt(c.distanciaKm)} km da trilha, Sol a ${sinal(c.alturaDoSol)}° - ${c.alturaDoSol > 0 ? 'de dia' : 'de noite'})`;
+    } else if (sat.proximasCoberturas) {
+      t += ' não cobre a casa nos próximos 12 dias';
+    }
+  }
   if (sat.idadeDoTleEmDias > 14) t += ` - atenção: TLE com ${fmt(sat.idadeDoTleEmDias)} dias, precisão menor`;
   return t;
+}
+
+/** A proxima passagem sobre a casa, em uma frase; vazio se nao ha observador. */
+export function textoDaPassagem(sat) {
+  const g = sat.proximaPassagem;
+  if (!g) return '';
+  const subida = Date.parse(g.subida), descida = Date.parse(g.descida), agora = Date.now();
+  return agora >= subida && agora <= descida
+    ? `passando agora até ${hhmm(descida)} (máx. ${fmt(g.elevacaoMaxima)}°)`
+    : `${hhmm(subida)}-${hhmm(descida)}, máx. ${fmt(g.elevacaoMaxima)}°${g.visivel ? ', visível' : ''}`;
+}
+
+/** Quando a faixa imageada cobre a casa, preferindo a passagem de dia; vazio se o satelite nao tem faixa. */
+export function textoDaFaixa(sat) {
+  if (!sat.larguraDaFaixaKm) return '';
+  const lista = sat.proximasCoberturas;
+  if (!lista) return `${fmt(sat.larguraDaFaixaKm)} km de largura`;
+  const c = lista.find(x => x.alturaDoSol > 0) || lista[0];
+  if (!c) return `${fmt(sat.larguraDaFaixaKm)} km - não cobre a casa nos próximos 12 dias`;
+  const d = new Date(c.instante);
+  return `${fmt(sat.larguraDaFaixaKm)} km - cobre a casa em ${dois(d.getDate())}/${dois(d.getMonth() + 1)} ${dois(d.getHours())}:${dois(d.getMinutes())}`
+    + ` (a ${fmt(c.distanciaKm)} km da trilha, Sol a ${sinal(c.alturaDoSol)}°, ${c.alturaDoSol > 0 ? 'de dia' : 'de noite'})`;
 }

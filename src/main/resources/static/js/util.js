@@ -1,13 +1,15 @@
 import * as THREE from 'three';
 
-export const AZUL = 0x0000ff;
-export const VERDE = 0x008000;
-export const VERMELHO = 0xff0000;
-export const PRETO = 0x000000;
+// tema escuro: o fundo e quase preto e a tinta (PRETO, por historia) e clara; os ponteiros ficam mais vivos
+export const FUNDO = 0x0b0f1a;
+export const AZUL = 0x6ea8ff;
+export const VERDE = 0x5fd47a;
+export const VERMELHO = 0xff6b6b;
+export const PRETO = 0xe6ebf5;
 
 /** Texto como sprite. setTexto redesenha, para os textos que mudam. */
 export class Rotulo extends THREE.Sprite {
-  constructor(texto, altura = 0.075, cor = '#000', negrito = false) {
+  constructor(texto, altura = 0.075, cor = '#e8edf8', negrito = false) {
     super(new THREE.SpriteMaterial({ transparent: true, depthTest: false }));
     this.altura = altura;
     this.cor = cor;
@@ -73,7 +75,7 @@ export class Painel {
   constructor(altura) {
     this.altura = altura;
     this.cena = new THREE.Scene();
-    this.cena.background = new THREE.Color(0xffffff);
+    this.cena.background = new THREE.Color(FUNDO);
     this.camera = new THREE.OrthographicCamera(-1, 1, altura / 2, -altura / 2, -10, 10);
   }
 

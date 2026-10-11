@@ -176,6 +176,13 @@ export class Observador {
     this.rLua = this.rotulo('astros', 'Lua', new THREE.Vector3(), '#ffffff', true);
   }
 
+  /** Liga ou desliga uma opcao de fora do painel, mantendo a caixa dele em dia. */
+  definirOpcao(chave, ligada) {
+    this.opcoes[chave] = ligada;
+    const caixa = this.painel.querySelector(`label[data-chave="${chave}"] input`);
+    if (caixa) caixa.checked = ligada;
+  }
+
   /** Um disco de luz com a cor do planeta, criado na primeira vez que ele aparece. */
   planeta(nome) {
     if (!this.planetas.has(nome)) {
@@ -212,13 +219,15 @@ export class Observador {
       this.marcasSat = [];
       for (const sat of sats.lista) {
         const cor = new THREE.Color(sat.cor);
+        const arco = new THREE.Group();
+        this.grupoSat.add(arco);
         let atual = [];
         const fechar = () => {
           if (atual.length > 1) {
             const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(atual),
               new THREE.LineBasicMaterial({ color: cor, transparent: true, opacity: 0.9, depthTest: false }));
             l.renderOrder = 9;
-            this.grupoSat.add(l);
+            arco.add(l);
           }
           atual = [];
         };
@@ -244,13 +253,15 @@ export class Observador {
         el.style.color = sat.cor;
         el.style.fontWeight = 'bold';
         this.contenedor.appendChild(el);
-        this.marcasSat.push({ sat, sprite, r: { el, posicao: new THREE.Vector3() } });
+        this.marcasSat.push({ sat, sprite, arco, r: { el, posicao: new THREE.Vector3() } });
       }
     }
 
     this.grupoSat.visible = this.opcoes.satelites;
     for (const m of this.marcasSat) {
-      const p = sats.posicao(m.sat);
+      const ligado = sats.visivel(m.sat);
+      m.arco.visible = ligado;
+      const p = ligado ? sats.posicao(m.sat) : null;
       const ok = this.opcoes.satelites && p && p.elevacao != null && p.elevacao > 0;
       m.sprite.visible = !!ok;
       if (!ok) { m.r.el.style.display = 'none'; continue; }
@@ -273,6 +284,8 @@ export class Observador {
       c.type = 'checkbox';
       c.checked = this.opcoes[chave];
       c.addEventListener('change', () => { this.opcoes[chave] = c.checked; });
+      l.dataset.chave = chave;
+      l.hidden = chave === 'planetas' || chave === 'satelites'; // estes dois ficam na coluna de filtros, que vale para as tres visoes
       l.append(c, ' ' + nome);
       p.appendChild(l);
     }

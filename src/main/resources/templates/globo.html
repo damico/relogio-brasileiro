@@ -4,11 +4,37 @@
 <body class="globo">
 <canvas id="tela"></canvas>
 <div id="marcas"></div>
-<div id="botoes">
-  <button id="botaoSat" type="button">Satélites: sim</button>
-  <button id="modo" type="button">Globo 3D</button>
-</div>
-<div id="informacoes"><div id="infoCasa"></div><div id="infoSat"></div></div>
+
+<aside th:replace="~{fragmentos :: colunaEsquerda}"></aside>
+
+<aside id="colunaDireita" class="coluna direita" data-coluna="direita">
+  <th:block th:replace="~{fragmentos :: cabecaDireita('globo')}"></th:block>
+  <div class="corpo">
+    <details class="secao" open>
+      <summary>Visão</summary>
+      <div class="segmentos" id="visaoGlobo">
+        <button type="button" data-visao="plano" class="ativo">Mapa plano</button>
+        <button type="button" data-visao="3d">Globo 3D</button>
+      </div>
+      <div class="nota" id="notaVisao">O mapa inteiro de uma vez, com a noite sombreada.</div>
+    </details>
+
+    <details class="secao" open>
+      <summary>Camadas</summary>
+      <label class="opcao"><input type="checkbox" id="camSatelites" checked> Satélites e órbitas</label>
+      <label class="opcao"><input type="checkbox" id="camFaixa" checked> Faixa imageada</label>
+      <label class="opcao"><input type="checkbox" id="camSol" checked> Sol a pino</label>
+      <label class="opcao"><input type="checkbox" id="camCasa" checked> Casa</label>
+    </details>
+
+    <details class="secao" open>
+      <summary>Satélites visíveis</summary>
+      <div id="listaSatelites"></div>
+      <div class="nota">Os satélites vêm da pasta <code>data/tle</code>.</div>
+    </details>
+  </div>
+</aside>
+
 <script type="module" th:src="@{/js/globo.js}"></script>
 </body>
 </html>

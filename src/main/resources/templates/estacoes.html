@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragmentos :: cabecalho('Estações - relogio.brasileiro')}"></head>
+<body class="estacoes">
+<canvas id="tela"></canvas>
+<div id="rotulos3d"></div>
+
+<aside th:replace="~{fragmentos :: colunaEsquerda}"></aside>
+
+<aside id="colunaDireita" class="coluna direita" data-coluna="direita">
+  <th:block th:replace="~{fragmentos :: cabecaDireita('estacoes')}"></th:block>
+  <div class="corpo">
+    <details class="secao" open>
+      <summary>Camadas</summary>
+      <label class="opcao"><input type="checkbox" data-camada="setas" checked> Sentido da órbita (setas)</label>
+      <label class="opcao"><input type="checkbox" data-camada="eixos" checked> Eixo inclinado da Terra</label>
+      <label class="opcao"><input type="checkbox" data-camada="rotulos" checked> Datas e estações</label>
+      <label class="opcao"><input type="checkbox" data-camada="hoje" checked> Terra de hoje</label>
+    </details>
+
+    <details class="secao" open>
+      <summary>Legenda</summary>
+      <div class="legenda" style="--cor:#ffe146"><i></i> Estações no Hemisfério Norte</div>
+      <div class="legenda" style="--cor:#ffffff"><i></i> Estações no Hemisfério Sul</div>
+      <div class="legenda" style="--cor:#d782ff"><i></i> Eixo inclinado 23,44°, sempre para o mesmo lado</div>
+      <div class="legenda" style="--cor:#e12d2d"><i></i> Órbita da Terra em torno do Sol</div>
+    </details>
+
+    <details class="secao" open>
+      <summary>Câmera</summary>
+      <div class="botoes"><button type="button" id="reiniciarCamera">Reiniciar a câmera</button></div>
+      <div class="nota">Arraste para girar a cena e use a roda do mouse para aproximar.</div>
+    </details>
+  </div>
+</aside>
+
+<script type="module" th:src="@{/js/estacoes.js}"></script>
+</body>
+</html>

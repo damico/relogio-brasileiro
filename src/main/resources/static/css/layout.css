@@ -1,0 +1,149 @@
+/*
+ * O padrao de todas as telas: o conteudo ocupa a largura inteira e, por cima
+ * dele, duas colunas de um quinto da largura cada, translucidas, para que o que
+ * esta atras continue visivel.
+ *
+ *   coluna 1 (esquerda): tempo e espaco, atualizada sozinha
+ *   partes 2 a 4:        so o conteudo
+ *   coluna 5 (direita):  configuracoes da tela
+ *
+ * As duas se recolhem e se expandem; o botao de recolher fica pregado na borda
+ * da coluna e continua a mostra quando ela some.
+ */
+:root {
+  --vidro: rgba(9, 13, 25, 0.54);
+  --vidro-forte: rgba(9, 13, 25, 0.78);
+  --borda: rgba(170, 190, 230, 0.22);
+  --texto: #eaf0fb;
+  --apagado: #bcc7dc;
+  --destaque: #6aa0ff;
+  --destaque-fundo: rgba(60, 110, 220, 0.45);
+  --sombra-texto: 0 0 3px rgba(0, 0, 0, 0.85), 0 0 8px rgba(0, 0, 0, 0.55);
+}
+
+.coluna {
+  position: fixed; top: 0; bottom: 0; z-index: 20;
+  width: 20vw; min-width: 260px; max-width: 440px;
+  display: flex; flex-direction: column;
+  background: var(--vidro);
+  -webkit-backdrop-filter: blur(3px) saturate(1.1); backdrop-filter: blur(3px) saturate(1.1);
+  color: var(--texto); font: 13px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  text-shadow: var(--sombra-texto);
+  transition: transform 0.24s ease;
+  box-sizing: border-box;
+}
+.coluna.esquerda { left: 0; border-right: 1px solid var(--borda); }
+.coluna.direita { right: 0; border-left: 1px solid var(--borda); }
+.coluna.esquerda.colapsada { transform: translateX(-100%); }
+.coluna.direita.colapsada { transform: translateX(100%); }
+
+/* o botao de recolher sai pela borda de dentro e fica visivel mesmo com a coluna recolhida */
+.coluna .alternar {
+  position: absolute; top: 14px; width: 26px; height: 58px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--vidro-forte); color: var(--texto); border: 1px solid var(--borda);
+  cursor: pointer; font-size: 20px; line-height: 1; text-shadow: none;
+}
+.coluna.esquerda .alternar { left: 100%; border-left: none; border-radius: 0 8px 8px 0; }
+.coluna.direita .alternar { right: 100%; border-right: none; border-radius: 8px 0 0 8px; }
+.coluna .alternar:hover { background: var(--destaque-fundo); }
+.coluna.esquerda.colapsada .alternar::before { content: '\203A'; }
+.coluna.esquerda:not(.colapsada) .alternar::before { content: '\2039'; }
+.coluna.direita.colapsada .alternar::before { content: '\2039'; }
+.coluna.direita:not(.colapsada) .alternar::before { content: '\203A'; }
+.coluna .alternar > * { display: none; }
+
+.coluna .cabeca {
+  padding: 12px 16px 8px; border-bottom: 1px solid var(--borda);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+.coluna .cabeca h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--apagado); }
+.coluna .cabeca .estado { font-size: 11px; color: var(--apagado); }
+
+.coluna .corpo { flex: 1; overflow-y: auto; padding: 4px 16px 18px; scrollbar-width: thin; scrollbar-color: rgba(170, 190, 230, 0.35) transparent; }
+
+.secao { border-bottom: 1px solid var(--borda); padding: 8px 0 10px; }
+.secao > summary {
+  cursor: pointer; list-style: none; user-select: none;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--apagado);
+  display: flex; align-items: center; gap: 6px; padding: 2px 0 6px;
+}
+.secao > summary::-webkit-details-marker { display: none; }
+.secao > summary::before { content: '\25BE'; font-size: 10px; transition: transform 0.15s; }
+.secao:not([open]) > summary::before { transform: rotate(-90deg); }
+.secao > summary:hover { color: var(--texto); }
+
+/* ---- navegacao entre telas ---- */
+.telas { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-bottom: 1px solid var(--borda); }
+.telas a, .telas .breve, .telas button {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 8px; border-radius: 6px; color: var(--texto); text-decoration: none;
+  background: transparent; border: none; font: inherit; text-align: left; cursor: pointer; text-shadow: inherit;
+}
+.telas a:hover, .telas button:hover { background: rgba(120, 150, 220, 0.2); }
+.telas a.atual { background: var(--destaque-fundo); box-shadow: inset 2px 0 0 var(--destaque); }
+.telas .breve { color: var(--apagado); cursor: default; }
+kbd { font: 11px ui-monospace, Menlo, Consolas, monospace; padding: 0 5px; border: 1px solid var(--borda); border-radius: 4px; color: var(--apagado); }
+.telas em { font-size: 11px; color: var(--apagado); font-style: normal; }
+
+/* ---- controles ---- */
+.coluna label.opcao { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
+.coluna input[type=checkbox], .coluna input[type=radio] { accent-color: var(--destaque); margin: 0; }
+.coluna input[type=range] { width: 100%; accent-color: var(--destaque); }
+.coluna select { width: 100%; background: rgba(0, 0, 0, 0.45); color: var(--texto); border: 1px solid var(--borda); border-radius: 6px; padding: 4px 6px; }
+.coluna .segmentos { display: flex; gap: 0; margin: 2px 0 6px; }
+.coluna .segmentos button {
+  flex: 1; padding: 6px 4px; cursor: pointer; color: var(--texto); background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--borda); font: inherit; text-shadow: inherit;
+}
+.coluna .segmentos button:first-child { border-radius: 6px 0 0 6px; }
+.coluna .segmentos button:last-child { border-radius: 0 6px 6px 0; }
+.coluna .segmentos button + button { border-left: none; }
+.coluna .segmentos button.ativo { background: var(--destaque-fundo); border-color: var(--destaque); }
+.coluna .botoes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.coluna .botoes button { padding: 3px 9px; cursor: pointer; color: var(--texto); background: rgba(0, 0, 0, 0.35); border: 1px solid var(--borda); border-radius: 6px; font: inherit; text-shadow: inherit; }
+.coluna .botoes button:hover { background: var(--destaque-fundo); }
+.coluna .nota { color: var(--apagado); font-size: 12px; }
+.coluna [hidden] { display: none !important; }
+
+/* ---- coluna da esquerda: tempo e espaco ---- */
+.relogio-digital { font: 600 40px/1.05 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.02em; }
+.relogio-digital small { font-size: 18px; color: var(--apagado); font-weight: 500; }
+.linha-utc { color: var(--apagado); font-size: 12px; margin-top: 2px; }
+.data-longa { font-size: 14px; margin-top: 6px; }
+.par { display: flex; justify-content: space-between; gap: 10px; padding: 1px 0; }
+.par > span:first-child { color: var(--apagado); }
+.par > span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.barra { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); margin: 6px 0 3px; position: relative; overflow: hidden; }
+.barra > i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 3px; background: var(--destaque); }
+.barra.marcador > i { width: 3px; border-radius: 1px; background: #fff; }
+.lua-linha { display: flex; gap: 12px; align-items: center; }
+.lua-linha canvas { flex: 0 0 auto; }
+.estacao-nome { font-size: 17px; font-weight: 600; }
+.cartao-sat { padding: 6px 0 8px; border-top: 1px dashed var(--borda); }
+.cartao-sat:first-child { border-top: none; }
+.cartao-sat .nome { font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cartao-sat .ponto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+.selo { font-size: 10px; letter-spacing: 0.04em; padding: 0 6px; border-radius: 8px; background: rgba(255, 255, 255, 0.16); color: var(--texto); font-weight: 500; }
+.selo.visivel { background: rgba(70, 200, 110, 0.55); }
+.selo.sombra { background: rgba(120, 120, 140, 0.5); }
+.cartao-sat .linha { color: var(--apagado); font-size: 12px; }
+.cartao-sat .linha b { color: var(--texto); font-weight: 500; }
+.planeta-linha { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
+.planeta-linha .nome { display: flex; align-items: center; gap: 6px; }
+.planeta-linha .ponto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.planeta-linha.apagado { color: var(--apagado); }
+
+/* o conteudo continua a largura inteira: so a barra de rolagem fina nao deve aparecer */
+html, body { margin: 0; height: 100%; overflow: hidden; }
+canvas#tela { display: block; width: 100vw; height: 100vh; }
+
+@media (max-width: 900px) {
+  .coluna { width: 72vw; }
+}
+
+/* botoes de ritmo do tempo e outros que ficam marcados */
+.coluna .botoes button.ativo { background: var(--destaque-fundo); border-color: var(--destaque); }
+.coluna .legenda { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.coluna .legenda i { width: 22px; height: 0; border-top: 3px solid var(--cor); display: inline-block; flex: 0 0 auto; }
+.coluna .alerta { color: #ff8f6b; }

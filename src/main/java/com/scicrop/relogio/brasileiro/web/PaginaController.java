@@ -11,4 +11,14 @@ public class PaginaController
 	public String index() {
 		return "index";
 	}
+
+	@GetMapping("/orbitas")
+	public String orbitas() {
+		return "orbitas";
+	}
+
+	@GetMapping("/estacoes")
+	public String estacoes() {
+		return "estacoes";
+	}
 }

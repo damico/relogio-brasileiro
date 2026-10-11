@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PRETO, Rotulo, Painel, linha, traco, disco, aro } from './util.js';
+import { diaDoAnoContinuo } from './tempoEspaco.js';
 
 const EXCENTRICIDADE = 0.0167086;
 const SEMI_EIXO_MAIOR_KM = 149_598_023;
@@ -34,7 +35,7 @@ const naOrbita = a => [A * Math.cos(a), B * Math.sin(a)];
 
 /**
  * Terra na orbita, com perielio, afelio, solsticios e equinocios, o
- * mostrador da distancia ate o Sol e a fase da Lua (esta vem do servidor).
+ * mostrador da distancia ate o Sol. A fase da Lua nao esta aqui: vive na coluna de tempo e espaco.
  */
 export class OrbitaTerraSol extends Painel {
   constructor() {
@@ -51,7 +52,7 @@ export class OrbitaTerraSol extends Painel {
     // orbita
     const pts = [];
     for (let i = 0; i <= 180; i++) pts.push(naOrbita(i / 180 * 2 * Math.PI));
-    cena.add(linha(pts, 0x787878));
+    cena.add(linha(pts, 0x8e98b0));
 
     this.sol = [FOCO, 0];
     const sol = disco(0.11, 0xffbe00, ...this.sol);
@@ -68,7 +69,7 @@ export class OrbitaTerraSol extends Painel {
 
     this.marcos = MARCOS.map(m => ({ ...m, rotulos: null }));
     this.terraHoje = new THREE.Group();
-    this.terraHoje.add(disco(0.05, 0x005ac8), aro(0.068, 0.012));
+    this.terraHoje.add(disco(0.05, 0x2f7bff), aro(0.068, 0.012));
     const rotTerra = new Rotulo('Terra hoje', 0.065);
     rotTerra.position.set(0, -0.16, 0);
     this.terraHoje.add(rotTerra);
@@ -78,7 +79,6 @@ export class OrbitaTerraSol extends Painel {
     this.marcosObjs = [];
 
     this.montarMostrador(cena);
-    this.montarLua(cena);
   }
 
   /** Marcos dependem so do ano; refaz quando ele muda. */
@@ -92,7 +92,7 @@ export class OrbitaTerraSol extends Painel {
       g.add(linha([this.sol, [x, y]], 0xf5cd6e));
       const terra = new THREE.Group();
       terra.position.set(x, y, 0);
-      terra.add(disco(0.045, 0x005ac8));
+      terra.add(disco(0.045, 0x2f7bff));
       // o eixo nao acompanha a orbita: fica sempre inclinado para o mesmo lado
       const inc = THREE.MathUtils.degToRad(INCLINACAO_DO_EIXO);
       const meio = 0.045 + 0.03;
@@ -146,84 +146,35 @@ export class OrbitaTerraSol extends Painel {
 
     const g = new THREE.PlaneGeometry(0.022, r * 0.9);
     g.translate(0, r * 0.45, 0);
-    this.agulha = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+    this.agulha = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xff6b6b }));
     this.agulha.position.set(cx, cy, 1);
-    cena.add(this.agulha, disco(0.035, 0xff0000, cx, cy));
-  }
-
-  /**
-   * A Lua e uma esfera de verdade, iluminada por uma luz direcional: a fase
-   * sai da posicao da luz, nao de um recorte. Ceu do hemisferio sul: a
-   * crescente fica iluminada do lado esquerdo.
-   */
-  montarLua(cena) {
-    const cx = -3.25, cy = -0.1;
-    const t = new Rotulo('Fase da Lua', 0.07);
-    t.position.set(cx, cy + 0.5, 0);
-    cena.add(t);
-
-    this.luaCena = new THREE.Group();
-    this.luaCena.position.set(cx, cy, 0);
-    const esfera = new THREE.Mesh(new THREE.SphereGeometry(0.34, 48, 32), new THREE.MeshStandardMaterial({ color: 0xfafaeb, roughness: 1 }));
-    this.luaCena.add(esfera);
-    // a luz so ilumina esta esfera: ela fica no mesmo grupo da cena, com a propria camera ortografica
-    this.luz = new THREE.DirectionalLight(0xffffff, 3.2);
-    this.luaCena.add(this.luz, new THREE.AmbientLight(0x464655, 1.2));
-    cena.add(this.luaCena);
-
-    this.faseTextos = [0, 1, 2, 3, 4].map(i => {
-      const l = new Rotulo('', 0.06);
-      l.position.set(cx + 0.45, cy + 0.22 - i * 0.12, 0);
-      l.center.set(0, 0.5);
-      cena.add(l);
-      return l;
-    });
-    this.faseTextos[0].negrito = true;
-    this.fase = null;
-  }
-
-  async carregarFase() {
-    try {
-      const r = await fetch('/api/lua/fase');
-      this.fase = await r.json();
-      this.fase.recebidoEm = Date.now();
-    } catch (e) { /* o servidor pode ter caido: segue com a ultima fase */ }
+    cena.add(this.agulha, disco(0.035, 0xff6b6b, cx, cy));
   }
 
   atualizar(agora) {
     const ano = agora.getFullYear();
     if (this.ano !== ano) this.montarMarcos(ano);
 
-    const angulo = anguloDesdeOPerielio(diaDoAno(agora));
+    const angulo = anguloDesdeOPerielio(diaDoAnoContinuo(agora.getTime()));
     const [x, y] = naOrbita(angulo);
     this.terraHoje.position.set(x, y, 0);
     if (this.raioHoje) this.cena.remove(this.raioHoje);
-    this.raioHoje = linha([this.sol, [x, y]], 0x787878);
+    this.raioHoje = linha([this.sol, [x, y]], 0x8e98b0);
     this.cena.add(this.raioHoje);
-
-    const data = agora.toLocaleDateString('pt-BR');
-    this.titulo.setTexto(`${data} - dia ${diaDoAno(agora)} do ano - ${(angulo * 180 / Math.PI).toLocaleString('pt-BR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} graus desde o periélio`);
 
     const d = distanciaEmKm(angulo);
     const frac = (d - distanciaEmKm(0)) / (distanciaEmKm(Math.PI) - distanciaEmKm(0));
     this.agulha.rotation.z = Math.PI * (1 - frac) - Math.PI / 2;
-    this.dist1.setTexto(milhoesDeKm(d));
-    this.dist2.setTexto(`${Math.round(d).toLocaleString('pt-BR')} km - ${(d / UA_EM_KM).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} UA`);
 
-    if (this.fase) {
-      const f = this.fase.fracaoDoCiclo;
-      const th = f * 2 * Math.PI;
-      this.luz.position.set(-Math.sin(th) * 5, 0, -Math.cos(th) * 5);
-      const dataEm = dias => new Date(agora.getTime() + dias * 86400000)
-        .toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      const linhas = [
-        this.fase.nome,
-        `${Math.round(this.fase.iluminacao * 100)}% iluminada`,
-        `${this.fase.idadeEmDias.toLocaleString('pt-BR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} dias de idade`,
-        `Nova em ${dataEm(this.fase.diasParaALuaNova)} (${Math.round(this.fase.diasParaALuaNova)} dias)`,
-        `Cheia em ${dataEm(this.fase.diasParaALuaCheia)} (${Math.round(this.fase.diasParaALuaCheia)} dias)`,
-      ];
-      linhas.forEach((s, i) => this.faseTextos[i].setTexto(s));
-    }
+    // cada texto e uma textura que se refaz quando muda, e com casas decimais ele muda quase a cada quadro: 10 vezes por segundo bastam
+    const t = performance.now();
+    if (t - (this.textosEm || 0) < 100) return;
+    this.textosEm = t;
+
+    const casas = (n, c) => n.toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c });
+    const data = agora.toLocaleDateString('pt-BR');
+    this.titulo.setTexto(`${data} - dia ${diaDoAno(agora)} do ano - ${casas(angulo * 180 / Math.PI, 5)} graus desde o periélio`);
+    this.dist1.setTexto(`${casas(d, 2)} km`);
+    this.dist2.setTexto(`${casas(d / UA_EM_KM, 9)} UA`);
   }
 }

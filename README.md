@@ -101,6 +101,12 @@ No navegador, `http://localhost:8080/` mostra os relógios e a órbita, e `F4` (
 
 O botão **Esfera 3D** (canto superior direito) troca o disco pela esfera celeste vista de fora, com quem olha no centro. Arrastar gira a esfera e a roda do mouse aproxima. O painel liga e desliga cada conceito: meridiano, equador celeste, polo e calotas circumpolares, movimento diurno, altura e azimute, ângulo horário e as estrelas (com a opção de ver só as acima do horizonte). O astro de referência pode ser o Sol ou a Lua.
 
+### Layout das telas
+
+Todas as telas seguem o mesmo padrão, em tema escuro: o conteúdo ocupa a largura inteira e, por cima dele, ficam duas colunas translúcidas de um quinto da largura cada. A da **esquerda** é de tempo e espaço, igual em todas as telas e atualizada sozinha: relógio e data, estação do ano, fase da Lua, distância ao Sol, Sol (altura, nascer e pôr), planetas e satélites. A da **direita** é de configurações da tela: visões, camadas, filtros e quais satélites aparecem. Cada coluna se recolhe pelo botão da borda, ou com as teclas `[` e `]`, e o estado fica guardado no navegador. `F1` volta para os relógios e `F11` alterna a tela cheia.
+
+As telas de **órbitas gerais** (`F2`) e de **estações** (`F3`) são cenas 3D em three.js que você gira arrastando e aproxima com a roda do mouse, sempre em tempo real. A de órbitas mostra a eclíptica, o plano da órbita da Lua inclinado 5,1° (desenhado 2 vezes maior), a linha dos nós, o quadro "visto de cima" e quando é temporada de eclipses. A de estações mostra a Terra, com o eixo sempre inclinado para o mesmo lado, nas quatro posições-chave da órbita, e onde ela está hoje.
+
 ### Planetas e satélites
 
 Os sete planetas (Mercúrio a Netuno) aparecem nas telas do céu e na esfera, com posição calculada pelos elementos orbitais da JPL e brilho aparente. O alcance da vista decide quais um olho nu enxerga.
@@ -108,6 +114,8 @@ Os sete planetas (Mercúrio a Netuno) aparecem nas telas do céu e na esfera, co
 Os satélites vêm da pasta `data/tle`: cada arquivo `.tle` ou `.txt` pode ter um ou vários satélites, em três linhas (nome e as duas linhas do TLE). A pasta é relida a cada poucos segundos, então trocar um TLE ou acrescentar outro satélite vale sem reiniciar. Vêm com o projeto o Sentinel-2A, o 2B e o 2C. Os três voam no mesmo plano e no mesmo sentido (órbita retrógrada heliossíncrona); o par 2B e 2C está hoje a 180° um do outro, e o 2A a cerca de 37° do 2B.
 
 Cada satélite aparece em todas as visões: no `/globo` (mapa plano e globo 3D) com a trilha da órbita, o trecho já percorrido mais apagado, a altitude e as duas velocidades (a da órbita e a relativa ao solo); e no disco, na esfera e no observador, com o arco da passagem sobre a sua casa, a elevação, o azimute e a próxima passagem. Na sombra da Terra o ponto fica apagado, porque o satélite deixa de refletir luz.
+
+**Faixa imageada.** O arquivo `data/tle/faixas.json` diz, por número NORAD, a largura da faixa que o satélite enxerga no chão, e só quem está nele ganha a faixa desenhada. Para o Sentinel-2 são 290 km, centrados na trilha: o campo de visão de 20,6° do instrumento MSI, segundo a ESA ([MSI Instrument](https://sentinel.esa.int/web/sentinel/technical-guides/sentinel-2-msi/msi-instrument)). No `/globo` a faixa aparece como uma tira translúcida em volta da trilha (botão "Faixa: sim/não"), e o texto de cada satélite diz quando a faixa cobre a casa: dia e hora do momento de maior aproximação, distância da casa até a trilha e a altura do Sol. A passagem de dia é a que interessa para imagear, e as da madrugada ficam de reserva. A tela mostra onde a faixa passa, não se o satélite de fato fotografou: isso depende do plano de aquisição da missão.
 
 O TLE envelhece: em órbita baixa o erro cresce na ordem de 1 km por dia, e depois de uma ou duas semanas a posição já não é confiável (a tela avisa quando o TLE passa de 14 dias). Para atualizar:
 

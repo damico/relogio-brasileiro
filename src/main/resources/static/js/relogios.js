@@ -3,9 +3,12 @@ import { AZUL, VERDE, VERMELHO, PRETO, Rotulo, Painel, traco, aro, disco } from 
 
 const R = 1; // raio do mostrador
 
-/** Posicao na volta completa (0 no topo, sentido horario) -> ponto. */
-function noMostrador(fracao, proporcao) {
-  const a = fracao * 2 * Math.PI;
+/**
+ * Posicao na volta completa (0 no topo) -> ponto. O sentido e 1 para o horario, que
+ * e o dos relogios do Hemisferio Norte, e -1 para o anti-horario.
+ */
+function noMostrador(fracao, proporcao, sentido = 1) {
+  const a = sentido * fracao * 2 * Math.PI;
   return [R * proporcao * Math.sin(a), R * proporcao * Math.cos(a)];
 }
 
@@ -14,8 +17,9 @@ function noMostrador(fracao, proporcao) {
  * quantas marcacoes cabem em uma volta e como posicionar os ponteiros.
  */
 class Relogio extends Painel {
-  constructor(titulo, marcacoes, rotulo, rotuloExterno) {
+  constructor(titulo, marcacoes, rotulo, rotuloExterno, sentido = 1) {
     super(2.9);
+    this.sentido = sentido;
     const cena = this.cena;
     cena.add(aro(R, 0.012));
 
@@ -26,15 +30,15 @@ class Relogio extends Painel {
     for (let m = 0; m < marcacoes; m++) {
       const f = m / marcacoes;
       const reforcado = m % (marcacoes / 4) === 0;
-      const [x1, y1] = noMostrador(f, 0.9), [x2, y2] = noMostrador(f, 1);
+      const [x1, y1] = noMostrador(f, 0.9, sentido), [x2, y2] = noMostrador(f, 1, sentido);
       cena.add(traco(x1, y1, x2, y2, reforcado ? 0.024 : 0.012));
       const r = new Rotulo(rotulo(m), 0.085);
-      r.position.set(...noMostrador(f, 0.8), 0);
+      r.position.set(...noMostrador(f, 0.8, sentido), 0);
       cena.add(r);
       const ext = rotuloExterno && rotuloExterno(m);
       if (ext) {
         const e = new Rotulo(ext, 0.07);
-        e.position.set(...noMostrador(f, 1.15), 0);
+        e.position.set(...noMostrador(f, 1.15, sentido), 0);
         cena.add(e);
       }
     }
@@ -49,15 +53,16 @@ class Relogio extends Painel {
     this.cena.add(m);
     return m;
   }
-}
 
-function pos(ponteiro, fracao) {
-  ponteiro.rotation.z = -fracao * 2 * Math.PI;
+  /** Poe o ponteiro na fracao da volta, no sentido do relogio. */
+  girar(ponteiro, fracao) {
+    ponteiro.rotation.z = -this.sentido * fracao * 2 * Math.PI;
+  }
 }
 
 export class RelogioNorteOcidental extends Relogio {
-  constructor() {
-    super('RelogioNorteOcidental', 12, m => (m === 0 ? '12' : String(m)));
+  constructor(titulo = 'RelogioNorteOcidental', sentido = 1) {
+    super(titulo, 12, m => (m === 0 ? '12' : String(m)), undefined, sentido);
     this.h = this.ponteiro(0.5, 0.03, AZUL);
     this.m = this.ponteiro(0.75, 0.02, VERDE);
     this.s = this.ponteiro(0.9, 0.01, VERMELHO);
@@ -67,9 +72,9 @@ export class RelogioNorteOcidental extends Relogio {
     const s = agora.getSeconds();
     const m = agora.getMinutes() + s / 60;
     const h = agora.getHours() % 12 + m / 60;
-    pos(this.h, h / 12);
-    pos(this.m, m / 60);
-    pos(this.s, s / 60);
+    this.girar(this.h, h / 12);
+    this.girar(this.m, m / 60);
+    this.girar(this.s, s / 60);
   }
 }
 
@@ -90,9 +95,24 @@ export class RelogioNorteOcidentalGlobal extends Relogio {
     const graus = dia / 3600 * 15;
     const minutosDeArco = (graus - Math.floor(graus)) * 60;
     const segundosDeArco = (minutosDeArco - Math.floor(minutosDeArco)) * 60;
-    pos(this.g, graus / 360);
-    pos(this.m, minutosDeArco / 60);
-    pos(this.s, segundosDeArco / 60);
+    this.girar(this.g, graus / 360);
+    this.girar(this.m, minutosDeArco / 60);
+    this.girar(this.s, segundosDeArco / 60);
+  }
+}
+
+/**
+ * O relogio para quem esta abaixo do equador. La o Sol cruza o ceu pelo norte, da
+ * direita para a esquerda, e a sombra de um relogio de sol gira no sentido
+ * anti-horario: os numeros e os ponteiros giram para a esquerda, o espelho do
+ * relogio de pulso comum, feito para o Hemisferio Norte.
+ */
+export class RelogioSulOcidental extends RelogioNorteOcidental {
+  constructor() {
+    super('RelogioSulOcidental', -1);
+    const nota = new Rotulo('anti-horário, como o Sol no Hemisfério Sul', 0.075, '#a3afc6');
+    nota.position.set(0, -1.3, 0);
+    this.cena.add(nota);
   }
 }
 
@@ -157,7 +177,7 @@ export class RelogioEstacoes extends Relogio {
     if (proximoInicio <= hoje) proximoInicio = inicioEm(ESTACOES[prox], hoje.getFullYear() + 1);
     const dias = Math.round((proximoInicio - hoje) / MS_DIA);
 
-    pos(this.ponteiroAno, fracaoDoAno(hoje));
+    this.girar(this.ponteiroAno, fracaoDoAno(hoje));
     this.estacao.setTexto(ESTACOES[atual].nome);
     this.faltam.setTexto(`faltam ${dias} dias para o ${ESTACOES[prox].nome}`);
   }

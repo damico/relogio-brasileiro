@@ -6,22 +6,50 @@
 <div id="rotulos"></div>
 <div id="rotulos3d"></div>
 <div id="rotulosObs"></div>
-<div id="modos">
-  <button type="button" data-modo="2d" class="ativo">Disco 2D</button>
-  <button type="button" data-modo="esfera">Esfera 3D</button>
-  <button type="button" data-modo="obs">Observador</button>
-</div>
-<div id="painelObs" hidden></div>
 <div id="hud" hidden></div>
-<div id="painel3d" hidden>
-  <label>Astro de referência
-    <select id="astroRef"><option value="sol">Sol</option><option value="lua">Lua</option></select>
-  </label>
-  <div id="camadas"></div>
-</div>
-<div id="cabecalho"><div>CeuDaCasa</div><div id="data"></div></div>
-<div id="situacao"><div id="linha1"></div><div id="linha2"></div><div id="linha3"></div><div id="linhasSat"></div></div>
-<div id="rodape"></div>
+
+<aside th:replace="~{fragmentos :: colunaEsquerda}"></aside>
+
+<aside id="colunaDireita" class="coluna direita" data-coluna="direita">
+  <th:block th:replace="~{fragmentos :: cabecaDireita('ceu')}"></th:block>
+  <div class="corpo">
+    <details class="secao" open>
+      <summary>Visão</summary>
+      <div id="modos" class="segmentos">
+        <button type="button" data-modo="2d" class="ativo">Disco 2D</button>
+        <button type="button" data-modo="esfera">Esfera 3D</button>
+        <button type="button" data-modo="obs">Observador</button>
+      </div>
+      <div id="opcoes2d" class="nota">O disco 2D não tem opções próprias: use os filtros abaixo.</div>
+      <div id="painelObs" hidden></div>
+      <div id="painel3d" hidden>
+        <label class="opcao">Astro de referência
+          <select id="astroRef"><option value="sol">Sol</option><option value="lua">Lua</option></select>
+        </label>
+        <div id="camadas"></div>
+      </div>
+    </details>
+
+    <details class="secao" open>
+      <summary>Astros</summary>
+      <label class="opcao"><input type="checkbox" id="filtroPlanetas" checked> Planetas</label>
+      <label class="opcao"><input type="checkbox" id="filtroSatelites" checked> Satélites e órbitas</label>
+      <div class="nota" id="resumoEstrelas"></div>
+    </details>
+
+    <details class="secao" open>
+      <summary>Satélites visíveis</summary>
+      <div id="listaSatelites"></div>
+    </details>
+
+    <details class="secao">
+      <summary>Dicas</summary>
+      <div class="nota" id="dicas"></div>
+      <div class="nota"><kbd>[</kbd> recolhe a coluna de tempo e espaço e <kbd>]</kbd> recolhe esta.</div>
+    </details>
+  </div>
+</aside>
+
 <script type="module" th:src="@{/js/ceu.js}"></script>
 </body>
 </html>

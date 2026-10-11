@@ -1,8 +1,31 @@
 <!doctype html>
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragmentos :: cabecalho('relogio.brasileiro')}"></head>
-<body>
+<body class="relogios">
 <canvas id="tela"></canvas>
+
+<aside th:replace="~{fragmentos :: colunaEsquerda}"></aside>
+
+<aside id="colunaDireita" class="coluna direita" data-coluna="direita">
+  <th:block th:replace="~{fragmentos :: cabecaDireita('relogios')}"></th:block>
+  <div class="corpo">
+    <details class="secao" open>
+      <summary>Painéis</summary>
+      <label class="opcao"><input type="checkbox" data-painel="0" checked> Relógio convencional</label>
+      <label class="opcao"><input type="checkbox" data-painel="1" checked> Relógio do Hemisfério Sul (anti-horário)</label>
+      <label class="opcao"><input type="checkbox" data-painel="2" checked> Relógio em graus (globo)</label>
+      <label class="opcao"><input type="checkbox" data-painel="3" checked> Relógio do ano (estações)</label>
+      <label class="opcao"><input type="checkbox" data-painel="4" checked> Órbita da Terra e distância ao Sol</label>
+      <div class="nota">Os três relógios ficam em cima; embaixo, a órbita da Terra com o relógio do ano à esquerda dela. O do Hemisfério Sul gira para a esquerda, como a sombra do Sol abaixo do equador.</div>
+    </details>
+
+    <details class="secao" open>
+      <summary>Colunas</summary>
+      <div class="nota"><kbd>[</kbd> recolhe a coluna de tempo e espaço e <kbd>]</kbd> recolhe esta. O conteúdo ocupa a tela inteira por trás delas.</div>
+    </details>
+  </div>
+</aside>
+
 <script type="module" th:src="@{/js/main.js}"></script>
 </body>
 </html>

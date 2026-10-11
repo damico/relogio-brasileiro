@@ -51,11 +51,24 @@ public final class Satelite
 	{
 	}
 
+	/**
+	 * Uma vez em que a faixa do satelite cobre um ponto do chao.
+	 *
+	 * @param instante o momento de maior aproximacao
+	 * @param distanciaKm distancia do ponto ate a trilha nesse momento, medida no chao
+	 * @param alturaDoSol altura do Sol sobre o ponto nesse momento, em graus
+	 */
+	public record Cobertura(Instant instante, double distanciaKm, double alturaDoSol)
+	{
+	}
+
 	/** Uma passagem sobre o observador, do nascer ao se pôr do satelite. */
 	public record Passagem(Instant subida, Instant culminacao, double elevacaoMaxima, Instant descida,
 			boolean visivel)
 	{
 	}
+
+	private static final double RAIO_MEDIO_DA_TERRA_KM = 6371.0;
 
 	private final Tle tle;
 	private final Sgp4 sgp4;
@@ -220,5 +233,75 @@ public final class Satelite
 		}
 		double r2 = posicao[0] * posicao[0] + posicao[1] * posicao[1] + posicao[2] * posicao[2];
 		return Math.sqrt(r2 - projecao * projecao) < WGS84_A;
+	}
+
+	/**
+	 * As proximas vezes em que a faixa imageada cobre um ponto do chao.
+	 *
+	 * A faixa e centrada na trilha, entao um ponto esta coberto quando a
+	 * distancia dele ate o ponto sob o satelite, no momento de maior
+	 * aproximacao, e de no maximo meia largura. A busca anda de minuto em
+	 * minuto e so refina, de 2 em 2 segundos, quando o satelite passa a menos
+	 * de 2000 km do ponto, que e muito menos trabalho que varrer tudo no passo fino.
+	 *
+	 * Isto diz onde a faixa passa, e nao se o satelite de fato fotografou: isso
+	 * depende do plano de aquisicao da missao.
+	 *
+	 * @param meiaLarguraKm metade da largura da faixa
+	 * @param maximo quantas coberturas devolver
+	 * @param dias ate quantos dias a frente procurar
+	 */
+	public List<Cobertura> proximasCoberturas(Instant a_partir_de, double latitude, double longitude,
+			double meiaLarguraKm, int maximo, int dias) {
+		List<Cobertura> achadas = new ArrayList<>();
+		Instant fim = a_partir_de.plus(Duration.ofDays(dias));
+
+		Instant t = a_partir_de;
+		while (t.isBefore(fim) && achadas.size() < maximo) {
+			Estado grosso = em(t, Double.NaN, Double.NaN);
+			if (distanciaNoChaoKm(latitude, longitude, grosso.latitude(), grosso.longitude()) > 2000) {
+				t = t.plusSeconds(60);
+				continue;
+			}
+
+			// refina em volta. Dos 2000 km de distancia ate o ponto sao uns 300 s de viagem, entao a janela
+			// de 360 s para cada lado garante que a maior aproximacao esta dentro dela
+			Instant melhor = t;
+			double menor = Double.MAX_VALUE;
+			for (Instant f = t.minusSeconds(360); f.isBefore(t.plusSeconds(360)); f = f.plusSeconds(2)) {
+				Estado e = em(f, Double.NaN, Double.NaN);
+				double d = distanciaNoChaoKm(latitude, longitude, e.latitude(), e.longitude());
+				if (d < menor) {
+					menor = d;
+					melhor = f;
+				}
+			}
+			// o passo de 2 s deixa o satelite a ate 7 km do ponto mais proximo: refina a 0,1 s
+			Instant centro = melhor;
+			for (long ms = -2000; ms <= 2000; ms += 100) {
+				Instant f = centro.plusMillis(ms);
+				Estado e = em(f, Double.NaN, Double.NaN);
+				double d = distanciaNoChaoKm(latitude, longitude, e.latitude(), e.longitude());
+				if (d < menor) {
+					menor = d;
+					melhor = f;
+				}
+			}
+
+			if (menor <= meiaLarguraKm && !melhor.isBefore(a_partir_de)) {
+				achadas.add(new Cobertura(melhor, menor, PosicaoDoSol.em(melhor).altura(latitude, longitude)));
+			}
+			// pula a passagem toda, contando do ponto achado, para nao contar a mesma duas vezes
+			t = melhor.plusSeconds(900);
+		}
+		return achadas;
+	}
+
+	/** Distancia no chao entre dois pontos, pelo circulo maximo (haversine), em km. */
+	public static double distanciaNoChaoKm(double lat1, double lon1, double lat2, double lon2) {
+		double p1 = Math.toRadians(lat1), p2 = Math.toRadians(lat2);
+		double dp = p2 - p1, dl = Math.toRadians(lon2 - lon1);
+		double h = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+		return 2 * RAIO_MEDIO_DA_TERRA_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 	}
 }

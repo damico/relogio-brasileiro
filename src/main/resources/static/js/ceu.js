@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { EsferaCeleste, GLSL_HORIZONTE } from './esfera.js';
 import { Observador } from './observador.js';
 import { COR_PLANETA, planetaVisivel } from './planetas.js';
-import { Satelites, descreverSatelite } from './satelites.js';
+import { Satelites } from './satelites.js';
+import { iniciarColunaEsquerda } from './colunaEsquerda.js';
+import { montarListaDeSatelites } from './satelitesUI.js';
 
 // O ceu inteiro acima do horizonte achatado num disco: o zenite no centro e o
 // horizonte na borda. Como se olha para cima, o leste fica a esquerda. A
@@ -17,8 +19,8 @@ const COR_HORIZONTE = 0x96aad2;
 const COR_SOL = 0xffe15a;
 const COR_CONSTELACAO = new THREE.Color(95 / 255, 125 / 255, 185 / 255);
 const FIM_DO_CREPUSCULO = -18; // abaixo disso o Sol ja nao clareia o ceu
-const MARGEM_DE_CIMA = 56;
-const MARGEM_DE_BAIXO = 76;
+const MARGEM_DE_CIMA = 30;
+const MARGEM_DE_BAIXO = 30;
 const rad = THREE.MathUtils.degToRad;
 
 const canvas = document.getElementById('tela');
@@ -271,7 +273,9 @@ function refazerSatelites2D() {
 function atualizarSatelites2D(naTela, h) {
   refazerSatelites2D();
   for (const t of trilhas2D) {
-    const p = sats.posicao(t.sat);
+    const ligado = filtros.satelites && sats.visivel(t.sat);
+    t.linhas.forEach(l => { l.visible = ligado; });
+    const p = ligado ? sats.posicao(t.sat) : null;
     const visivel = modo === '2d' && p && p.elevacao != null && p.elevacao > 0;
     t.marcador.visible = !!visivel;
     t.el.style.display = visivel ? '' : 'none';
@@ -282,29 +286,6 @@ function atualizarSatelites2D(naTela, h) {
     t.marcador.material.color.set(p.iluminado ? t.sat.cor : '#555a66');
     t.el.textContent = `${t.sat.nome} ${sinal(p.elevacao)}°`;
     colocar(t.el, x + 9, y);
-  }
-}
-
-let satEscritoEm = 0;
-/** Uma linha de texto por satelite, uma vez por segundo. */
-function escreverSatelitesCeu() {
-  if (Date.now() - satEscritoEm < 1000) return;
-  satEscritoEm = Date.now();
-  const caixa = document.getElementById('linhasSat');
-  caixa.replaceChildren();
-  for (const sat of sats.lista) {
-    const linha = document.createElement('div');
-    const ponto = document.createElement('span');
-    ponto.textContent = '\u25cf ';
-    ponto.style.color = sat.cor;
-    linha.append(ponto, descreverSatelite(sat, sats.posicao(sat)));
-    caixa.appendChild(linha);
-  }
-  for (const aviso of sats.avisos) {
-    const linha = document.createElement('div');
-    linha.textContent = 'Aviso: ' + aviso;
-    linha.style.color = '#ff9a66';
-    caixa.appendChild(linha);
   }
 }
 
@@ -396,8 +377,18 @@ addEventListener('keydown', e => {
 
 // ---- disco 2D ou esfera 3D ----
 const modos = document.getElementById('modos');
+const opcoes2d = document.getElementById('opcoes2d');
+const dicas = document.getElementById('dicas');
+const resumo = document.getElementById('resumoEstrelas');
+const DICAS = {
+  '2d': 'A roda do mouse aproxima, arrastar move e 0 volta ao normal. O zênite fica no centro e o horizonte na borda; o leste fica à esquerda porque se olha para cima.',
+  esfera: 'Arraste para girar a esfera, a roda do mouse aproxima e 0 volta ao normal. Cada conceito do painel liga e desliga.',
+  obs: 'Arraste ou use as setas para virar a cabeça, a roda do mouse muda o zoom e 0 volta à vista inicial.',
+};
 function mudarModo(novo) {
   modo = novo;
+  opcoes2d.hidden = novo !== '2d';
+  dicas.textContent = DICAS[novo];
   modos.querySelectorAll('button').forEach(b => b.classList.toggle('ativo', b.dataset.modo === novo));
   painel3d.hidden = novo !== 'esfera';
   painelObs.hidden = novo !== 'obs';
@@ -414,7 +405,7 @@ modos.addEventListener('click', e => {
 });
 // ?modo=esfera ou ?modo=obs abre direto no modo
 const modoInicial = new URLSearchParams(location.search).get('modo');
-if (['esfera', 'obs'].includes(modoInicial)) mudarModo(modoInicial);
+mudarModo(['esfera', 'obs'].includes(modoInicial) ? modoInicial : '2d');
 
 // ---- dados ----
 // ?t=2026-06-21T15:00:00Z mostra o ceu de outro instante, parado
@@ -425,6 +416,19 @@ const sats = new Satelites(instanteFixo);
 esfera.satelites = sats;
 observador.satelites = sats;
 sats.iniciar();
+
+// filtros que valem para as tres visoes: os planetas, os satelites e quais satelites
+const filtros = { planetas: true, satelites: true };
+for (const [id, chave] of [['filtroPlanetas', 'planetas'], ['filtroSatelites', 'satelites']]) {
+  const caixa = document.getElementById(id);
+  caixa.addEventListener('change', () => {
+    filtros[chave] = caixa.checked;
+    esfera.definirCamada(chave, caixa.checked);
+    observador.definirOpcao(chave, caixa.checked);
+  });
+}
+iniciarColunaEsquerda({ sats, instanteFixo });
+montarListaDeSatelites(document.getElementById('listaSatelites'), sats);
 async function carregarCatalogo() {
   montarCatalogo(await (await fetch('/api/ceu/catalogo')).json());
 }
@@ -466,21 +470,12 @@ function desenhar() {
   camera.right = w; camera.top = h;
   camera.updateProjectionMatrix();
 
-  const d = instanteFixo ? new Date(instanteFixo) : new Date();
-  document.getElementById('data').textContent =
-    `${dois(d.getDate())}/${dois(d.getMonth() + 1)}/${d.getFullYear()} ${dois(d.getHours())}:${dois(d.getMinutes())}:${dois(d.getSeconds())} - ${instanteFixo ? 'instante fixo' : 'tempo real'}`;
-  document.getElementById('rodape').textContent = modo === 'esfera'
-    ? 'Tempo real - arrastar gira a esfera, roda do mouse aproxima, 0 volta ao normal - F4 e F5 trocam de tela - F11 tela cheia'
-    : modo === 'obs'
-    ? 'Tempo real - arrastar ou setas viram a cabeça, roda do mouse muda o zoom, 0 volta ao normal - F4 e F5 trocam de tela - F11 tela cheia'
-    : `Tempo real - roda do mouse aproxima (${fmt(zoom)}x), arrastar move, 0 volta ao normal - F4 e F5 trocam de tela - F11 tela cheia`;
-
   if (agora && agora.casa && !instanteFixo) {
     agora.tempoSideral = (agora.tsl0 + (Date.now() - agora.pedidoEm) / 1000 * 0.0041780745) % 360;
   }
 
   if (!agora || !agora.casa) {
-    document.getElementById('linha1').textContent = agora ? 'Sem data/config.json com a chave home' : '';
+    resumo.textContent = agora ? 'Sem data/config.json com a chave home' : '';
     disco.visible = false;
     renderer.render(cena, camera);
     requestAnimationFrame(desenhar);
@@ -539,14 +534,12 @@ function desenhar() {
     colocar(rotuloLua, x, y - 22);
   }
 
-  const visiveis3 = [];
   for (const p of agora.planetas || []) {
     const o = planeta2D(p.nome);
-    const vis = planetaVisivel(p, LIMITE_2D, claridade);
+    const vis = filtros.planetas && planetaVisivel(p, LIMITE_2D, claridade);
     o.mesh.visible = vis && modo === '2d';
     o.el.style.display = vis ? '' : 'none';
     if (vis) {
-      visiveis3.push(`${p.nome} (${sinal(p.magnitude)})`);
       const [x, y] = naTela(rad(p.altura), rad(p.azimute));
       const r = Math.max(2.5, Math.min(7, 3.5 + (1.5 - p.magnitude) * 0.9));
       o.mesh.position.set(x, h - y, 0);
@@ -554,11 +547,7 @@ function desenhar() {
       colocar(o.el, x + r + 4, y);
     }
   }
-  document.getElementById('linha3').textContent = visiveis3.length
-    ? 'Planetas visíveis: ' + visiveis3.join(', ') : 'Nenhum planeta visível agora';
-
   atualizarSatelites2D(naTela, h);
-  escreverSatelitesCeu();
 
   colocar(rosa.N, cx, cy - raio - 16);
   colocar(rosa.S, cx, cy + raio + 16);
@@ -583,10 +572,7 @@ function desenhar() {
     for (let i = 0; i < catalogo.ra.length; i++) if (alturaAzimute(catalogo.ra[i], catalogo.dec[i])[0] > 0) visiveis++;
   }
 
-  document.getElementById('linha1').textContent =
-    `Casa em ${fmt(agora.casa.latitude, 4)}, ${fmt(agora.casa.longitude, 4)} - tempo sideral local ${fmt(agora.tempoSideral / 15, 2)} h - ${visiveis} estrelas acima do horizonte`;
-  document.getElementById('linha2').textContent =
-    `Sol a ${sinal(alturaSol)} de altura, ${nomeDoDia(alturaSol)} - Lua a ${sinal(alturaLua)}, ${agora.lua.nome}, ${fmt(agora.lua.iluminacao * 100, 0)}% iluminada`;
+  resumo.textContent = `${visiveis} estrelas acima do horizonte` + (modo === '2d' ? ` - zoom ${fmt(zoom)}x` : '');
 
   if (modo === 'esfera') {
     renderer.setViewport(0, 0, w, h);

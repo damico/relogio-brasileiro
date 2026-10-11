@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { Satelites, descreverSatelite } from './satelites.js';
+import { Satelites } from './satelites.js';
+import { iniciarColunaEsquerda } from './colunaEsquerda.js';
+import { montarListaDeSatelites } from './satelitesUI.js';
 
 const COR_DIA = '#ffd246';
 const COR_NOITE = '#78aaff';
@@ -72,7 +74,6 @@ function criarMarca(texto, cor, tamanho) {
 }
 const marcaSol = criarMarca('Sol a pino', COR_DIA, 14);
 const marcaCasa = criarMarca('casa', COR_NOITE, 11);
-marcaCasa.style.display = 'none';
 
 function noMapa(lat, lon) {
   return new THREE.Vector3(lon / 180 * 2, lat / 90, 0.01);
@@ -99,7 +100,6 @@ async function carregar() {
     dados = await r.json();
     material.uniforms.sol.value.copy(normal(dados.sol.latitude, dados.sol.longitude));
     if (dados.casa) {
-      marcaCasa.style.display = '';
       marcaCasa.style.setProperty('--cor', dados.casa.dia ? COR_DIA : COR_NOITE);
     }
     if (!carregar.centrou) {
@@ -108,33 +108,7 @@ async function carregar() {
       visao.lat = c.latitude;
       visao.lon = c.longitude;
     }
-    escreverInformacoes();
   } catch (e) { /* servidor fora do ar: mantem o ultimo quadro */ }
-}
-
-const dois = n => String(n).padStart(2, '0');
-const hhmm = d => `${dois(d.getHours())}:${dois(d.getMinutes())}`;
-const fmt = (n, c = 2) => n.toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c });
-
-function escreverInformacoes() {
-  if (!dados) return;
-  const agora = new Date();
-  const utc = `${dois(agora.getUTCHours())}:${dois(agora.getUTCMinutes())}:${dois(agora.getUTCSeconds())}`;
-  const aqui = `${dois(agora.getHours())}:${dois(agora.getMinutes())}:${dois(agora.getSeconds())}`;
-  let html = `${aqui} aqui, ${utc} UTC &nbsp;|&nbsp; Sol a pino em ${fmt(dados.sol.latitude)}, ${fmt(dados.sol.longitude)}`;
-
-  const c = dados.casa;
-  if (!c) {
-    html += '<br>Sem data/config.json com a chave home, então a casa não aparece no mapa';
-  } else {
-    html += `<br>Casa em ${fmt(c.latitude, 4)}, ${fmt(c.longitude, 4)}: ${c.dia ? 'dia' : 'noite'}, `
-      + `Sol a ${fmt(c.alturaDoSol, 1)} de altura e ${fmt(c.azimute, 0)} de azimute`;
-    if (c.horasAteONascer >= 0 && c.horasAteOPor >= 0) {
-      const quando = h => hhmm(new Date(agora.getTime() + h * 3600_000));
-      html += ` &nbsp;|&nbsp; nasce ${quando(c.horasAteONascer)}, se põe ${quando(c.horasAteOPor)}`;
-    }
-  }
-  document.getElementById('infoCasa').innerHTML = html;
 }
 
 // ---- satelites: a trilha no mapa e na esfera, e a posicao agora ----
@@ -142,8 +116,86 @@ const RAIO_DA_TERRA_KM = 6371;
 const sats = new Satelites();
 sats.iniciar();
 let mostrarSatelites = true;
+let mostrarFaixa = true;
+let mostrarSol = true;
+let mostrarCasa = true;
 let versaoDesenhada = -1;
 let trilhas = []; // por satelite: { sat, marca, segmentos: [{ i0, n, passadoPlano, futuroPlano, passadoEsfera, futuroEsfera }] }
+
+/** Rumo inicial do circulo maximo de um ponto a outro, em graus. */
+function rumoEntre(lat1, lon1, lat2, lon2) {
+  const p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180, dl = (lon2 - lon1) * Math.PI / 180;
+  return Math.atan2(Math.sin(dl) * Math.cos(p2), Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl)) * 180 / Math.PI;
+}
+
+/** O ponto a uma distancia, num rumo, de outro ponto da esfera. */
+function destinoDe(lat, lon, rumo, km) {
+  const d = km / RAIO_DA_TERRA_KM, la = lat * Math.PI / 180, lo = lon * Math.PI / 180, b = rumo * Math.PI / 180;
+  const la2 = Math.asin(Math.sin(la) * Math.cos(d) + Math.cos(la) * Math.sin(d) * Math.cos(b));
+  const lo2 = lo + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(la), Math.cos(d) - Math.sin(la) * Math.sin(la2));
+  return [la2 * 180 / Math.PI, ((lo2 * 180 / Math.PI + 540) % 360) - 180];
+}
+
+/**
+ * A faixa que o satelite imageia: uma tira de largura fixa centrada na trilha.
+ * Em cada amostra, as bordas ficam a meia largura para cada lado, no rumo
+ * perpendicular a trilha. Onde a borda cruza o meridiano de 180 graus, o mapa
+ * plano nao desenha, para nao riscar o mapa inteiro.
+ */
+function montarFaixa(sat, cor, objetos) {
+  const a = sat.amostras, meia = sat.larguraDaFaixaKm / 2, n = a.length;
+  const esq = [], dir = [];
+  for (let i = 0; i < n; i++) {
+    const j = i < n - 1 ? i : i - 1;
+    const rumo = rumoEntre(a[j][1], a[j][2], a[j + 1][1], a[j + 1][2]);
+    esq.push(destinoDe(a[i][1], a[i][2], rumo - 90, meia));
+    dir.push(destinoDe(a[i][1], a[i][2], rumo + 90, meia));
+  }
+
+  const plano = new Float32Array(n * 6), esfera = new Float32Array(n * 6);
+  for (let i = 0; i < n; i++) {
+    [esq[i], dir[i]].forEach(([lat, lon], lado) => {
+      const pl = noMapa(lat, lon), es = normal(lat, lon).multiplyScalar(1.003);
+      plano.set([pl.x, pl.y, 0.015], (i * 2 + lado) * 3);
+      esfera.set([es.x, es.y, es.z], (i * 2 + lado) * 3);
+    });
+  }
+
+  // um trecho so existe no mapa plano se os seis vertices dele ficam do mesmo lado do meridiano de 180 graus.
+  // Comparar so vizinhos do mesmo lado nao basta: com a trilha em cima do meridiano, uma borda cai em +180 e a outra
+  // em -180, e ligar as duas riscaria o mapa de ponta a ponta
+  const pulo = i => {
+    const lons = [esq[i][1], dir[i][1], a[i][2], esq[i + 1][1], dir[i + 1][1], a[i + 1][2]];
+    return Math.max(...lons) - Math.min(...lons) > 180;
+  };
+  const triPlano = [], triEsfera = [], ladosPlano = [], ladosEsfera = [];
+  for (let i = 0; i < n - 1; i++) {
+    const quad = [i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2];
+    triEsfera.push(...quad);
+    ladosEsfera.push(i * 2, i * 2 + 2, i * 2 + 1, i * 2 + 3);
+    if (!pulo(i)) {
+      triPlano.push(...quad);
+      ladosPlano.push(i * 2, i * 2 + 2, i * 2 + 1, i * 2 + 3);
+    }
+  }
+
+  const criar = (posicoes, tri, lados, profundidade) => {
+    const attr = new THREE.BufferAttribute(posicoes, 3);
+    const gf = new THREE.BufferGeometry();
+    gf.setAttribute('position', attr);
+    gf.setIndex(tri);
+    const preenchimento = new THREE.Mesh(gf, new THREE.MeshBasicMaterial({
+      color: cor, transparent: true, opacity: 0.17, side: THREE.DoubleSide, depthWrite: false, depthTest: profundidade }));
+    const ge = new THREE.BufferGeometry();
+    ge.setAttribute('position', attr);
+    ge.setIndex(lados);
+    const bordas = new THREE.LineSegments(ge, new THREE.LineBasicMaterial({
+      color: cor, transparent: true, opacity: 0.55, depthTest: profundidade }));
+    [preenchimento, bordas].forEach(o => { o.frustumCulled = false; cena.add(o); objetos.push(o); });
+    return [preenchimento, bordas];
+  };
+  return { plano: criar(plano, triPlano, ladosPlano, false), esfera: criar(esfera, triEsfera, ladosEsfera, true) };
+}
 
 function descartar(objetos) {
   for (const o of objetos) {
@@ -204,7 +256,8 @@ function refazerTrilhas() {
       };
     });
 
-    trilhas.push({ sat, objetos, segmentos: info, marca: criarMarca(sat.nome, sat.cor, 11) });
+    const faixa = sat.larguraDaFaixaKm ? montarFaixa(sat, cor, objetos) : null;
+    trilhas.push({ sat, objetos, faixa, segmentos: info, marca: criarMarca(sat.nome, sat.cor, 11) });
   }
 }
 
@@ -212,39 +265,25 @@ function refazerTrilhas() {
 function atualizarSatelites() {
   refazerTrilhas();
   for (const t of trilhas) {
-    const p = mostrarSatelites ? sats.posicao(t.sat) : null;
+    const ligado = mostrarSatelites && sats.visivel(t.sat);
+    const p = ligado ? sats.posicao(t.sat) : null;
     t.marca.style.display = p ? '' : 'none';
     for (const s of t.segmentos) {
       const k = p ? p.indice - s.i0 : -1; // onde o satelite esta, contado desde o inicio do segmento
       const passado = Math.max(0, Math.min(s.n, Math.floor(k) + 1));
       const lados = [[s.passadoPlano, s.futuroPlano, !modo3d], [s.passadoEsfera, s.futuroEsfera, modo3d]];
-      for (const [antes, depois, ligado] of lados) {
-        antes.visible = depois.visible = ligado && mostrarSatelites;
+      for (const [antes, depois, lado] of lados) {
+        antes.visible = depois.visible = lado && ligado;
         antes.geometry.setDrawRange(0, Math.max(passado + 1, 0));
         depois.geometry.setDrawRange(Math.max(passado - 1, 0), s.n);
       }
     }
+    if (t.faixa) {
+      const ligada = ligado && mostrarFaixa;
+      t.faixa.plano.forEach(o => { o.visible = ligada && !modo3d; });
+      t.faixa.esfera.forEach(o => { o.visible = ligada && modo3d; });
+    }
     if (p) posicionar(t.marca, p.latitude, p.longitude, 1 + p.altitude / RAIO_DA_TERRA_KM);
-  }
-}
-
-function escreverSatelites() {
-  const caixa = document.getElementById('infoSat');
-  caixa.replaceChildren();
-  if (!mostrarSatelites) return;
-  for (const sat of sats.lista) {
-    const linha = document.createElement('div');
-    const ponto = document.createElement('span');
-    ponto.textContent = '\u25cf ';
-    ponto.style.color = sat.cor;
-    linha.append(ponto, descreverSatelite(sat, sats.posicao(sat)));
-    caixa.appendChild(linha);
-  }
-  for (const aviso of sats.avisos) {
-    const linha = document.createElement('div');
-    linha.textContent = 'Aviso: ' + aviso;
-    linha.style.color = '#ff9a66';
-    caixa.appendChild(linha);
   }
 }
 
@@ -265,18 +304,27 @@ canvas.addEventListener('wheel', e => {
   visao.distancia = Math.max(1.4, Math.min(6, visao.distancia * Math.exp(e.deltaY * 0.001)));
 }, { passive: false });
 
-const botaoSat = document.getElementById('botaoSat');
-botaoSat.addEventListener('click', () => {
-  mostrarSatelites = !mostrarSatelites;
-  botaoSat.textContent = mostrarSatelites ? 'Satélites: sim' : 'Satélites: não';
-  escreverSatelites();
-});
+// ---- configuracao: a coluna da direita ----
+const segmentos = document.querySelectorAll('#visaoGlobo button');
+segmentos.forEach(b => b.addEventListener('click', () => {
+  modo3d = b.dataset.visao === '3d';
+  segmentos.forEach(x => x.classList.toggle('ativo', x === b));
+  document.getElementById('notaVisao').textContent = modo3d
+    ? 'Arraste para girar o globo e use a roda do mouse para aproximar.'
+    : 'O mapa inteiro de uma vez, com a noite sombreada.';
+}));
 
-const botao = document.getElementById('modo');
-botao.addEventListener('click', () => {
-  modo3d = !modo3d;
-  botao.textContent = modo3d ? 'Mapa plano' : 'Globo 3D';
-});
+const camada = (id, aplicar) => {
+  const caixa = document.getElementById(id);
+  caixa.addEventListener('change', () => aplicar(caixa.checked));
+};
+camada('camSatelites', v => { mostrarSatelites = v; });
+camada('camFaixa', v => { mostrarFaixa = v; });
+camada('camSol', v => { mostrarSol = v; });
+camada('camCasa', v => { mostrarCasa = v; });
+
+iniciarColunaEsquerda({ sats });
+montarListaDeSatelites(document.getElementById('listaSatelites'), sats);
 
 // ---- quadro ----
 function desenhar() {
@@ -288,14 +336,12 @@ function desenhar() {
   esfera.visible = modo3d;
   plano.visible = !modo3d;
 
-  // o mapa plano ocupa a largura e deixa espaco para a barra de informacoes, que cresce com os satelites
-  const util = Math.max(h - document.getElementById('informacoes').offsetHeight - 4, 1);
+  // o mapa ocupa a tela inteira: as informacoes ficam nas colunas, que sao transparentes
+  const util = h;
   if (modo3d) {
     camera3d.aspect = aspecto;
     camera3d.position.copy(normal(visao.lat, visao.lon)).multiplyScalar(visao.distancia);
     camera3d.lookAt(0, 0, 0);
-    // sobe o centro da esfera para a area acima da barra de informacoes
-    camera3d.setViewOffset(w, h, 0, (h - util) / 2, w, h);
     camera3d.updateProjectionMatrix();
   } else {
     // mundo por pixel: o mapa (4 x 2) cabe inteiro na area util, centralizado nela
@@ -311,15 +357,15 @@ function desenhar() {
 
   atualizarSatelites();
 
+  marcaSol.style.display = mostrarSol && dados ? '' : 'none';
+  marcaCasa.style.display = mostrarCasa && dados && dados.casa ? '' : 'none';
   if (dados) {
-    posicionar(marcaSol, dados.sol.latitude, dados.sol.longitude);
-    if (dados.casa) posicionar(marcaCasa, dados.casa.latitude, dados.casa.longitude);
+    if (mostrarSol) posicionar(marcaSol, dados.sol.latitude, dados.sol.longitude);
+    if (dados.casa && mostrarCasa) posicionar(marcaCasa, dados.casa.latitude, dados.casa.longitude);
   }
   requestAnimationFrame(desenhar);
 }
 
 carregar();
 setInterval(carregar, 1000);
-setInterval(escreverInformacoes, 1000);
-setInterval(escreverSatelites, 1000);
 desenhar();

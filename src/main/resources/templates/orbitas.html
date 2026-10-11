@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragmentos :: cabecalho('Órbitas gerais - relogio.brasileiro')}"></head>
+<body class="orbitas">
+<canvas id="tela"></canvas>
+<div id="rotulos3d"></div>
+
+<aside th:replace="~{fragmentos :: colunaEsquerda}"></aside>
+
+<aside id="colunaDireita" class="coluna direita" data-coluna="direita">
+  <th:block th:replace="~{fragmentos :: cabecaDireita('orbitas')}"></th:block>
+  <div class="corpo">
+    <details class="secao" open>
+      <summary>Camadas</summary>
+      <label class="opcao"><input type="checkbox" data-camada="ecliptica" checked> Plano da eclíptica</label>
+      <label class="opcao"><input type="checkbox" data-camada="planoDaLua" checked> Plano da órbita da Lua</label>
+      <label class="opcao"><input type="checkbox" data-camada="nos" checked> Linha dos nós</label>
+      <label class="opcao"><input type="checkbox" data-camada="visaoDeCima" checked> Quadro visto de cima</label>
+      <label class="opcao"><input type="checkbox" data-camada="rotulos" checked> Rótulos</label>
+      <label class="opcao"><input type="checkbox" data-camada="exagero" checked> Exagerar a inclinação (2 vezes)</label>
+    </details>
+
+    <details class="secao" open>
+      <summary>Legenda</summary>
+      <div class="legenda" style="--cor:#bebecd"><i></i> Eclíptica: o caminho aparente do Sol</div>
+      <div class="legenda" style="--cor:#96befa"><i></i> Plano da órbita da Lua, 5,1° à eclíptica</div>
+      <div class="legenda" style="--cor:#ffcd50"><i></i> Linha dos nós: onde os planos se cortam</div>
+      <div class="nota">A inclinação real de 5,1° é desenhada 2 vezes maior para dar para ver. As distâncias estão fora de escala.</div>
+    </details>
+
+    <details class="secao" open>
+      <summary>Câmera</summary>
+      <div class="botoes"><button type="button" id="reiniciarCamera">Reiniciar a câmera</button></div>
+      <div class="nota">Arraste para girar a cena e use a roda do mouse para aproximar.</div>
+    </details>
+  </div>
+</aside>
+
+<script type="module" th:src="@{/js/orbitasGerais.js}"></script>
+</body>
+</html>

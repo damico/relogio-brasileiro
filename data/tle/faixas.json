@@ -1,0 +1,6 @@
+{
+  "_comentario": "Largura da faixa imageada no chao, em km, por numero NORAD. Sentinel-2: campo de visao de 20,6 graus do MSI, 290 km na trilha (ESA, sentinel.esa.int, MSI Instrument). So quem esta aqui ganha a faixa desenhada.",
+  "40697": 290,
+  "42063": 290,
+  "60989": 290
+}

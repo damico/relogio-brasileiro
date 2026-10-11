@@ -1,5 +1,6 @@
 package com.scicrop.relogio.brasileiro.web;
 
+import java.io.File;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.scicrop.relogio.brasileiro.CatalogoDeSatelites;
 import com.scicrop.relogio.brasileiro.Configuracao;
 import com.scicrop.relogio.brasileiro.Satelite;
+import com.scicrop.relogio.brasileiro.Satelite.Cobertura;
 import com.scicrop.relogio.brasileiro.Satelite.Estado;
 import com.scicrop.relogio.brasileiro.Satelite.Passagem;
 
@@ -88,6 +91,15 @@ public class SatelitesController
 					Passagem p = s.proximaPassagem(instante, obs[0], obs[1], 48);
 					m.put("proximaPassagem", p);
 				}
+
+				// a faixa imageada: so para quem tem a largura configurada em data/tle/faixas.json
+				Double largura = larguraDaFaixa(s.getTle().numero());
+				if (largura != null) {
+					m.put("larguraDaFaixaKm", largura);
+					if (!Double.isNaN(obs[0])) {
+						m.put("proximasCoberturas", coberturas(s, instante, obs, largura));
+					}
+				}
 				lista.add(m);
 			} catch (RuntimeException e) {
 				avisos.add(s.getTle().nome() + ": " + e.getMessage());
@@ -133,5 +145,45 @@ public class SatelitesController
 	private static double arredondar(double v, int casas) {
 		double f = Math.pow(10, casas);
 		return Math.round(v * f) / f;
+	}
+
+	private static final ObjectMapper JSON = new ObjectMapper();
+	private static final File FAIXAS = new File("data/tle/faixas.json");
+
+	/** Cache das coberturas, que custam uma busca de varios dias: vale por alguns minutos. */
+	private static final Map<String, Object[]> CACHE_DE_COBERTURA = new java.util.concurrent.ConcurrentHashMap<>();
+	private static final long VALIDADE_DA_COBERTURA_MS = 5 * 60_000;
+
+	/** Largura da faixa em km para o satelite, ou nulo se nao ha. */
+	private static Double larguraDaFaixa(int numero) {
+		if (!faixasExistem()) {
+			return null;
+		}
+		try {
+			Object v = JSON.readValue(FAIXAS, Map.class).get(String.valueOf(numero));
+			return v instanceof Number n ? n.doubleValue() : null;
+		} catch (java.io.IOException e) {
+			return null;
+		}
+	}
+
+	private static boolean faixasExistem() {
+		return FAIXAS.isFile();
+	}
+
+	@SuppressWarnings("unchecked")
+	private static List<Cobertura> coberturas(Satelite s, Instant instante, double[] obs, double larguraKm) {
+		String chave = s.getTle().numero() + "|" + obs[0] + "|" + obs[1];
+		Object[] guardado = CACHE_DE_COBERTURA.get(chave);
+		long agora = System.currentTimeMillis();
+		// o instante pedido pode ser fixo (?t=): so reaproveita se for do mesmo minuto de antes
+		if (guardado != null && agora - (long) guardado[0] < VALIDADE_DA_COBERTURA_MS
+				&& Math.abs(Duration.between((Instant) guardado[2], instante).getSeconds()) < 600) {
+			return (List<Cobertura>) guardado[1];
+		}
+		// um ciclo de repeticao do Sentinel-2 e de 10 dias: em 12 dias a faixa passa pela casa pelo menos uma vez
+		List<Cobertura> lista = s.proximasCoberturas(instante, obs[0], obs[1], larguraKm / 2, 4, 12);
+		CACHE_DE_COBERTURA.put(chave, new Object[] { agora, lista, instante });
+		return lista;
 	}
 }
